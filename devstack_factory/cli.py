@@ -12,9 +12,9 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 
-from core.config import ConfigurationManager
-from core.environment import Environment
-from core.docker_manager import DockerManager
+from devstack_factory.core.config import ConfigurationManager
+from devstack_factory.core.environment import Environment
+from devstack_factory.core.docker_manager import DockerManager
 
 @click.group()
 @click.version_option(version='0.1.0')

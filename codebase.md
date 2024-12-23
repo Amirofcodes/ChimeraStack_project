@@ -203,18 +203,269 @@ SOFTWARE.
 
 ```
 
+# pyproject.toml
+
+```toml
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devstack-factory"
+version = "0.1.0"
+description = "A Docker-centric development environment factory for PHP and Python projects"
+readme = "README.md"
+authors = [{ name = "Jaouad Bouddehbine", email = "your.email@example.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+keywords = ["docker", "development", "environment", "php", "python"]
+dependencies = [
+    "click>=8.0.0",
+    "docker>=6.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+]
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/devstack-factory"
+Repository = "https://github.com/yourusername/devstack-factory.git"
+
+[project.scripts]
+devstack = "devstack_factory.cli:cli"
+```
+
 # README.md
 
 ```md
-# devstack-factory
-A Docker-centric development environment factory for PHP and Python projects
+# DevStack Factory
 
+DevStack Factory is a **Docker-centric tool** that simplifies the creation of consistent, production-ready development environments for **PHP** and **Python** projects. By combining an intelligent setup system with Docker’s reliability, DevStack Factory ensures your environment is easily reproducible, whether you’re coding locally, testing in staging, or deploying to production.
+
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Project Structure](#project-structure)
+6. [Configuration](#configuration)
+7. [Development](#development)
+8. [License](#license)
+9. [Author](#author)
+
+---
+
+## Features
+
+- **Docker-based Configuration**  
+  Ensures consistent, isolated environments across local machines and different deployment targets.
+
+- **Built-in PHP & Python Support**
+
+  - **PHP**: Laravel, Symfony, or vanilla PHP
+  - **Python**: Django, Flask, or vanilla Python
+
+- **Flexible Infrastructure Choices**
+
+  - **Web Servers**: Nginx or Apache with optimized configurations
+  - **Databases**: MySQL, PostgreSQL, or MariaDB (production-ready settings)
+  - **Additional Services**: Redis, logging, and monitoring tools
+
+- **Environment-specific Configurations**
+
+  - **Development**: Optimized for local development
+  - **Testing**: Perfect for staging and integration tests
+  - **Production**: Secure and performance-tuned
+
+- **Intelligent Project Scaffolding**  
+  Respects framework conventions, creating a boilerplate that follows best practices.
+
+- **Automated Docker Resource Management**  
+  Abstracts away the complexity of handling multiple containers and services.
+
+---
+
+## Prerequisites
+
+Make sure you have the following installed:
+
+- **Python** 3.8 or higher
+- **Docker** 20.10 or higher
+- **Docker Compose V2**
+- **Git**
+
+---
+
+## Installation
+
+1. **Clone the repository:**
+   \`\`\`bash
+   git clone https://github.com/Amirofcodes/devstack-factory.git
+   \`\`\`
+2. **Navigate to the project directory:**
+   \`\`\`bash
+   cd devstack-factory
+   \`\`\`
+3. **Install the package (in editable mode):**
+   \`\`\`bash
+   pip install -e .
+   \`\`\`
+
+Once installed, you’ll have access to the `devstack` command-line interface (CLI).
+
+---
+
+## Usage
+
+DevStack Factory provides a straightforward CLI for creating and managing project environments.
+
+### Create a New Project
+
+\`\`\`bash
+devstack create myproject --language php --framework laravel
+\`\`\`
+
+**Available options**:
+
+- `--language`: `php` | `python`
+- `--framework`: `none` | `laravel` | `symfony` | `django` | `flask`
+- `--webserver`: `nginx` | `apache`
+- `--database`: `mysql` | `postgresql` | `mariadb`
+- `--env`: `development` | `testing` | `production`
+
+### Start an Existing Environment
+
+\`\`\`bash
+devstack start myproject
+\`\`\`
+
+### Stop an Environment
+
+\`\`\`bash
+devstack stop myproject
+\`\`\`
+
+Use these commands to quickly spin up and tear down your Docker environments.
+
+---
+
+## Project Structure
+
+When you create a new project (e.g., `myproject`), DevStack Factory generates a structured directory layout:
+
+\`\`\`
+myproject/
+├── docker/
+│   ├── nginx/ or apache/
+│   ├── php/ or python/
+│   └── database/
+├── config/
+│   ├── development.yaml
+│   ├── testing.yaml
+│   └── production.yaml
+├── docker-compose.yml
+└── .env
+\`\`\`
+
+- **docker/**: Contains Docker configurations for your web server, language runtime, and database.
+- **config/**: Holds environment-specific settings for development, testing, and production.
+- **docker-compose.yml**: Orchestrates all containers in your stack.
+- **.env**: Stores environment variables used by `docker-compose` and your application.
+
+---
+
+## Configuration
+
+DevStack Factory includes default, secure, and optimized configurations for each environment. You can customize these to fit your needs:
+
+- **Docker Compose**: Update service orchestration, port mappings, and resource allocations.
+- **Web Server Configs**: Modify your Nginx or Apache settings to adapt for advanced use cases.
+- **Database Settings**: Tweak performance and security settings for MySQL, PostgreSQL, or MariaDB.
+- **Environment Variables**: Manage secrets and sensitive information using the `.env` file.
+
+---
+
+## Development
+
+If you’re interested in contributing to DevStack Factory or modifying it locally:
+
+1. **Create a virtual environment**:
+   \`\`\`bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   \`\`\`
+2. **Install development dependencies**:
+   \`\`\`bash
+   pip install -r requirements.txt
+   \`\`\`
+3. **Run tests**:
+   \`\`\`bash
+   pytest
+   \`\`\`
+
+Feel free to submit pull requests with improvements or new features.
+
+---
+
+## License
+
+DevStack Factory is released under the [MIT License](LICENSE). You are free to use, modify, and distribute this software as permitted by the license.
+
+---
+
+## Author
+
+**Created by:** [Jaouad Bouddehbine](https://github.com/yourusername)
+
+For bug reports and feature requests, please [open an issue](https://github.com/Amirofcodes/devstack-factory/issues).
+
+---
+
+Feel free to reach out or submit a pull request if you have questions or suggestions. Thank you for using DevStack Factory!
+
+```
+
+# requirements.txt
+
+```txt
+# requirements.txt
+click>=8.0.0
+docker>=6.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
 ```
 
 # src/__init__.py
 
 ```py
+# src/__init__.py
+"""
+DevStack Factory
 
+A Docker-centric tool for creating consistent development environments.
+"""
+
+__version__ = "0.1.0"
+__author__ = "Jaouad Bouddehbine"
+__license__ = "MIT"
+
+from .core import Environment, ConfigurationManager, DockerManager
+from .cli import cli
+
+__all__ = ['Environment', 'ConfigurationManager', 'DockerManager', 'cli']
 ```
 
 # src/cli.py
@@ -578,10 +829,346 @@ class Environment:
             return False
 ```
 
+# src/devstack_factory.egg-info/dependency_links.txt
+
+```txt
+
+
+```
+
+# src/devstack_factory.egg-info/entry_points.txt
+
+```txt
+[console_scripts]
+devstack = devstack_factory.cli:cli
+
+```
+
+# src/devstack_factory.egg-info/PKG-INFO
+
+```
+Metadata-Version: 2.1
+Name: devstack-factory
+Version: 0.1.0
+Summary: A Docker-centric development environment factory for PHP and Python projects
+Author-email: Jaouad Bouddehbine <your.email@example.com>
+License: MIT License
+        
+        Copyright (c) 2024 Jaouad Bouddehbine
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/yourusername/devstack-factory
+Project-URL: Repository, https://github.com/yourusername/devstack-factory.git
+Keywords: docker,development,environment,php,python
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.0.0
+Requires-Dist: docker>=6.0.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: python-dotenv>=1.0.0
+
+# DevStack Factory
+
+DevStack Factory is a **Docker-centric tool** that simplifies the creation of consistent, production-ready development environments for **PHP** and **Python** projects. By combining an intelligent setup system with Docker’s reliability, DevStack Factory ensures your environment is easily reproducible, whether you’re coding locally, testing in staging, or deploying to production.
+
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Project Structure](#project-structure)
+6. [Configuration](#configuration)
+7. [Development](#development)
+8. [License](#license)
+9. [Author](#author)
+
+---
+
+## Features
+
+- **Docker-based Configuration**  
+  Ensures consistent, isolated environments across local machines and different deployment targets.
+
+- **Built-in PHP & Python Support**
+
+  - **PHP**: Laravel, Symfony, or vanilla PHP
+  - **Python**: Django, Flask, or vanilla Python
+
+- **Flexible Infrastructure Choices**
+
+  - **Web Servers**: Nginx or Apache with optimized configurations
+  - **Databases**: MySQL, PostgreSQL, or MariaDB (production-ready settings)
+  - **Additional Services**: Redis, logging, and monitoring tools
+
+- **Environment-specific Configurations**
+
+  - **Development**: Optimized for local development
+  - **Testing**: Perfect for staging and integration tests
+  - **Production**: Secure and performance-tuned
+
+- **Intelligent Project Scaffolding**  
+  Respects framework conventions, creating a boilerplate that follows best practices.
+
+- **Automated Docker Resource Management**  
+  Abstracts away the complexity of handling multiple containers and services.
+
+---
+
+## Prerequisites
+
+Make sure you have the following installed:
+
+- **Python** 3.8 or higher
+- **Docker** 20.10 or higher
+- **Docker Compose V2**
+- **Git**
+
+---
+
+## Installation
+
+1. **Clone the repository:**
+   \`\`\`bash
+   git clone https://github.com/Amirofcodes/devstack-factory.git
+   \`\`\`
+2. **Navigate to the project directory:**
+   \`\`\`bash
+   cd devstack-factory
+   \`\`\`
+3. **Install the package (in editable mode):**
+   \`\`\`bash
+   pip install -e .
+   \`\`\`
+
+Once installed, you’ll have access to the `devstack` command-line interface (CLI).
+
+---
+
+## Usage
+
+DevStack Factory provides a straightforward CLI for creating and managing project environments.
+
+### Create a New Project
+
+\`\`\`bash
+devstack create myproject --language php --framework laravel
+\`\`\`
+
+**Available options**:
+
+- `--language`: `php` | `python`
+- `--framework`: `none` | `laravel` | `symfony` | `django` | `flask`
+- `--webserver`: `nginx` | `apache`
+- `--database`: `mysql` | `postgresql` | `mariadb`
+- `--env`: `development` | `testing` | `production`
+
+### Start an Existing Environment
+
+\`\`\`bash
+devstack start myproject
+\`\`\`
+
+### Stop an Environment
+
+\`\`\`bash
+devstack stop myproject
+\`\`\`
+
+Use these commands to quickly spin up and tear down your Docker environments.
+
+---
+
+## Project Structure
+
+When you create a new project (e.g., `myproject`), DevStack Factory generates a structured directory layout:
+
+\`\`\`
+myproject/
+├── docker/
+│   ├── nginx/ or apache/
+│   ├── php/ or python/
+│   └── database/
+├── config/
+│   ├── development.yaml
+│   ├── testing.yaml
+│   └── production.yaml
+├── docker-compose.yml
+└── .env
+\`\`\`
+
+- **docker/**: Contains Docker configurations for your web server, language runtime, and database.
+- **config/**: Holds environment-specific settings for development, testing, and production.
+- **docker-compose.yml**: Orchestrates all containers in your stack.
+- **.env**: Stores environment variables used by `docker-compose` and your application.
+
+---
+
+## Configuration
+
+DevStack Factory includes default, secure, and optimized configurations for each environment. You can customize these to fit your needs:
+
+- **Docker Compose**: Update service orchestration, port mappings, and resource allocations.
+- **Web Server Configs**: Modify your Nginx or Apache settings to adapt for advanced use cases.
+- **Database Settings**: Tweak performance and security settings for MySQL, PostgreSQL, or MariaDB.
+- **Environment Variables**: Manage secrets and sensitive information using the `.env` file.
+
+---
+
+## Development
+
+If you’re interested in contributing to DevStack Factory or modifying it locally:
+
+1. **Create a virtual environment**:
+   \`\`\`bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   \`\`\`
+2. **Install development dependencies**:
+   \`\`\`bash
+   pip install -r requirements.txt
+   \`\`\`
+3. **Run tests**:
+   \`\`\`bash
+   pytest
+   \`\`\`
+
+Feel free to submit pull requests with improvements or new features.
+
+---
+
+## License
+
+DevStack Factory is released under the [MIT License](LICENSE). You are free to use, modify, and distribute this software as permitted by the license.
+
+---
+
+## Author
+
+**Created by:** [Jaouad Bouddehbine](https://github.com/yourusername)
+
+For bug reports and feature requests, please [open an issue](https://github.com/Amirofcodes/devstack-factory/issues).
+
+---
+
+Feel free to reach out or submit a pull request if you have questions or suggestions. Thank you for using DevStack Factory!
+
+```
+
+# src/devstack_factory.egg-info/requires.txt
+
+```txt
+click>=8.0.0
+docker>=6.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+```
+
+# src/devstack_factory.egg-info/SOURCES.txt
+
+```txt
+LICENSE
+README.md
+pyproject.toml
+src/__init__.py
+src/cli.py
+src/core/__init__.py
+src/core/config.py
+src/core/docker_manager.py
+src/core/environment.py
+src/devstack_factory.egg-info/PKG-INFO
+src/devstack_factory.egg-info/SOURCES.txt
+src/devstack_factory.egg-info/dependency_links.txt
+src/devstack_factory.egg-info/entry_points.txt
+src/devstack_factory.egg-info/requires.txt
+src/devstack_factory.egg-info/top_level.txt
+src/frameworks/__init__.py
+src/frameworks/base.py
+src/frameworks/php/__init__.py
+src/frameworks/php/base_php.py
+src/frameworks/php/laravel.py
+src/frameworks/php/symfony.py
+src/frameworks/php/vanilla.py
+src/frameworks/python/__init__.py
+src/frameworks/python/base_python.py
+src/frameworks/python/django.py
+src/frameworks/python/flask.py
+src/frameworks/python/vanilla.py
+src/services/__init__.py
+src/services/databases/__init__.py
+src/services/databases/base.py
+src/services/databases/mariadb.py
+src/services/databases/mysql.py
+src/services/databases/postgresql.py
+src/services/webservers/__init__.py
+src/services/webservers/apache.py
+src/services/webservers/base.py
+src/services/webservers/nginx.py
+src/templates/__init__.py
+```
+
+# src/devstack_factory.egg-info/top_level.txt
+
+```txt
+__init__
+cli
+core
+frameworks
+services
+templates
+
+```
+
 # src/frameworks/__init__.py
 
 ```py
+# src/frameworks/__init__.py
+"""
+Framework Implementations
 
+Provides framework-specific implementations for PHP and Python projects.
+"""
+
+from .php import LaravelFramework, SymfonyFramework, VanillaPHPFramework
+from .python import DjangoFramework, FlaskFramework, VanillaPythonFramework
+
+__all__ = [
+    'LaravelFramework',
+    'SymfonyFramework',
+    'VanillaPHPFramework',
+    'DjangoFramework',
+    'FlaskFramework',
+    'VanillaPythonFramework'
+]
 ```
 
 # src/frameworks/base.py
@@ -1820,7 +2407,40 @@ POSTGRES_PASSWORD=postgres
 # src/services/__init__.py
 
 ```py
+# src/services/__init__.py
+"""
+Service Implementations
 
+Provides configurations for various services like databases and web servers.
+"""
+
+from .databases import MySQLService, PostgreSQLService, MariaDBService
+from .webservers import NginxService, ApacheService
+
+__all__ = [
+    'MySQLService',
+    'PostgreSQLService',
+    'MariaDBService',
+    'NginxService',
+    'ApacheService'
+]
+```
+
+# src/services/databases/__init__.py
+
+```py
+# src/services/databases/__init__.py
+"""
+Database Service Implementations
+
+Provides specialized configurations for different database systems.
+"""
+
+from .mysql import MySQLService
+from .postgresql import PostgreSQLService
+from .mariadb import MariaDBService
+
+__all__ = ['MySQLService', 'PostgreSQLService', 'MariaDBService']
 ```
 
 # src/services/databases/base.py
@@ -2327,6 +2947,22 @@ host    all            all             ::/0                    scram-sha-256
                 }
             }
         }
+```
+
+# src/services/webservers/__init__.py
+
+```py
+# src/services/webservers/__init__.py
+"""
+Web Server Implementations
+
+Provides specialized configurations for different web servers.
+"""
+
+from .nginx import NginxService
+from .apache import ApacheService
+
+__all__ = ['NginxService', 'ApacheService']
 ```
 
 # src/services/webservers/apache.py

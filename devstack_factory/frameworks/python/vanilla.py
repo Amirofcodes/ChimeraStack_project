@@ -10,7 +10,7 @@ production-ready setup for custom Python development projects.
 
 from pathlib import Path
 from typing import Dict, Any
-from frameworks.python.base_python import BasePythonFramework
+from devstack_factory.frameworks.python.base_python import BasePythonFramework
 
 class VanillaPythonFramework(BasePythonFramework):
     """Vanilla Python implementation for framework-free development."""

@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import venv
 from typing import Dict, Any
-from frameworks.base import BaseFramework
+from devstack_factory.frameworks.base import BaseFramework
 
 class BasePythonFramework(BaseFramework):
     """Base class for Python frameworks providing shared functionality."""

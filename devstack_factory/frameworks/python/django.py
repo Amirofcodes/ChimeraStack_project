@@ -10,7 +10,7 @@ recommended deployment practices.
 from pathlib import Path
 from typing import Dict, Any
 import subprocess
-from frameworks.python.base_python import BasePythonFramework
+from devstack_factory.frameworks.python.base_python import BasePythonFramework
 
 class DjangoFramework(BasePythonFramework):
     """Django framework implementation focusing on Docker environment setup."""

@@ -8,7 +8,7 @@ Laravel installation and project structure conventions.
 from pathlib import Path
 from typing import Dict, Any
 import subprocess
-from frameworks.php.base_php import BasePHPFramework
+from devstack_factory.frameworks.php.base_php import BasePHPFramework
 
 class LaravelFramework(BasePHPFramework):
     """Laravel framework implementation focusing on Docker environment setup."""

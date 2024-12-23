@@ -9,7 +9,7 @@ Docker environment without imposing specific project structure decisions.
 from pathlib import Path
 from typing import Dict, Any
 import subprocess
-from frameworks.python.base_python import BasePythonFramework
+from devstack_factory.frameworks.python.base_python import BasePythonFramework
 
 class FlaskFramework(BasePythonFramework):
     """Flask framework implementation focusing on Docker environment setup."""

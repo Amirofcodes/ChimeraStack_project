@@ -10,7 +10,7 @@ imposing any framework constraints.
 
 from pathlib import Path
 from typing import Dict, Any
-from frameworks.php.base_php import BasePHPFramework
+from devstack_factory.frameworks.php.base_php import BasePHPFramework
 
 class VanillaPHPFramework(BasePHPFramework):
     """Vanilla PHP implementation for framework-free development."""

@@ -118,7 +118,4 @@ Created by Jaouad Bouddehbine
 
 For bug reports and feature requests, please open an issue on the GitHub repository.
 
-```
-
-```
 ````

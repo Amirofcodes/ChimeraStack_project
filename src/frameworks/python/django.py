@@ -1,103 +1,167 @@
 """
 Django Framework Implementation
 
-Handles Django-specific project setup and configuration, including database
-setup and static file handling.
+Provides Docker environment configuration for Django projects while preserving
+Django's standard project structure and conventions. This implementation focuses
+on creating a production-ready Docker environment that aligns with Django's
+recommended deployment practices.
 """
 
-import subprocess
 from pathlib import Path
 from typing import Dict, Any
+import subprocess
 from frameworks.python.base_python import BasePythonFramework
 
 class DjangoFramework(BasePythonFramework):
-    """Django framework implementation."""
+    """Django framework implementation focusing on Docker environment setup."""
 
     def __init__(self, project_name: str, base_path: Path):
         super().__init__(project_name, base_path)
-        self.requirements = [
-            'django',
-            'gunicorn',
-            'psycopg2-binary',
-            'python-dotenv'
-        ]
+        self.docker_requirements.update({
+            'python': {
+                'image': 'python:3.11-slim',
+                'environment': {
+                    'DJANGO_SETTINGS_MODULE': 'config.settings',
+                    'PYTHONUNBUFFERED': '1',
+                    'DATABASE_URL': 'postgresql://postgres:postgres@db:5432/postgres'
+                }
+            }
+        })
 
     def initialize_project(self) -> bool:
-        """Initialize a new Django project."""
+        """Initialize a Django project using Docker."""
         try:
             project_path = self.base_path / self.project_name
-            project_path.mkdir(exist_ok=True)
             
-            # Create virtual environment
-            if not self._setup_virtual_environment():
-                return False
-            
-            # Install Django and create project
+            # Create project using Django's startproject through Docker
             subprocess.run([
                 'docker', 'run', '--rm',
-                '-v', f'{project_path}:/app',
+                '-v', f'{self.base_path}:/app',
                 '-w', '/app',
                 self.docker_requirements['python']['image'],
-                'pip', 'install', 'django'
+                'bash', '-c',
+                f'pip install django && django-admin startproject config {self.project_name}'
             ], check=True)
+
+            # Create requirements.txt
+            requirements = [
+                'django>=4.2.0',
+                'psycopg2-binary>=2.9.0',
+                'gunicorn>=20.1.0',
+                'python-dotenv>=1.0.0'
+            ]
+            (project_path / 'requirements.txt').write_text('\n'.join(requirements))
             
-            subprocess.run([
-                'docker', 'run', '--rm',
-                '-v', f'{project_path}:/app',
-                '-w', '/app',
-                self.docker_requirements['python']['image'],
-                'django-admin', 'startproject',
-                'config', '.'
-            ], check=True)
-            
-            return self._generate_dockerfile() and self._create_requirements_file()
-        except Exception as e:
+            return True
+        except subprocess.CalledProcessError as e:
             print(f"Error initializing Django project: {e}")
             return False
 
+    def configure_docker(self) -> Dict[str, Any]:
+        """Generate Django-specific Docker configuration."""
+        config = {
+            'services': {
+                'web': {
+                    'build': {
+                        'context': '.',
+                        'dockerfile': 'docker/python/Dockerfile'
+                    },
+                    'command': 'gunicorn config.wsgi:application --bind 0.0.0.0:8000',
+                    'volumes': [
+                        '.:/app:cached',
+                        'static_volume:/app/staticfiles',
+                        'media_volume:/app/media'
+                    ],
+                    'ports': [f"{self.get_default_ports()['web']}:8000"],
+                    'environment': self.docker_requirements['python']['environment'],
+                    'depends_on': ['db']
+                },
+                'db': {
+                    'image': 'postgres:13',
+                    'volumes': ['postgres_data:/var/lib/postgresql/data/'],
+                    'environment': {
+                        'POSTGRES_DB': '${POSTGRES_DB}',
+                        'POSTGRES_USER': '${POSTGRES_USER}',
+                        'POSTGRES_PASSWORD': '${POSTGRES_PASSWORD}'
+                    },
+                    'ports': [f"{self.get_default_ports()['database']}:5432"]
+                }
+            },
+            'volumes': {
+                'postgres_data': None,
+                'static_volume': None,
+                'media_volume': None
+            }
+        }
+        return config
+
+    def get_default_ports(self) -> Dict[str, int]:
+        """Return default ports for Django development."""
+        return {
+            'web': 8000,
+            'database': 5432
+        }
+
     def setup_development_environment(self) -> bool:
-        """Set up Django development environment."""
+        """Set up Django development environment configurations."""
         try:
-            project_path = self.base_path / self.project_name
-            
-            # Create necessary directories
-            (project_path / 'static').mkdir(exist_ok=True)
-            (project_path / 'media').mkdir(exist_ok=True)
-            
-            # Generate Django configuration
-            self._generate_django_settings()
-            self._generate_env_file()
-            
+            self._create_docker_configs()
+            self._create_env_file()
             return True
         except Exception as e:
             print(f"Error setting up Django environment: {e}")
             return False
 
-    def configure_docker(self) -> Dict[str, Any]:
-        """Generate Django-specific Docker configuration."""
-        base_config = super().configure_docker()
+    def _create_docker_configs(self) -> None:
+        """Create necessary Docker configuration files."""
+        docker_path = self.base_path / self.project_name / 'docker'
+        docker_path.mkdir(exist_ok=True)
         
-        # Add Django-specific services
-        base_config['services'].update({
-            'db': {
-                'image': 'postgres:13',
-                'ports': [f"{self.get_default_ports()['database']}:5432"],
-                'environment': {
-                    'POSTGRES_DB': '${DB_NAME}',
-                    'POSTGRES_USER': '${DB_USER}',
-                    'POSTGRES_PASSWORD': '${DB_PASSWORD}'
-                }
-            }
-        })
-        
-        return base_config
+        self._create_python_dockerfile(docker_path / 'python')
 
-    def _create_requirements_file(self) -> bool:
-        """Create requirements.txt with necessary packages."""
-        try:
-            requirements_path = self.base_path / self.project_name / 'requirements.txt'
-            requirements_path.write_text('\n'.join(self.requirements))
-            return True
-        except Exception as e:
-            print(f"Error creating requirements.txt: {e}")
-            return False
+    def _create_python_dockerfile(self, path: Path) -> None:
+        """Generate Python Dockerfile for Django."""
+        path.mkdir(exist_ok=True)
+        dockerfile_content = f"""
+FROM {self.docker_requirements['python']['image']}
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    build-essential \\
+    libpq-dev \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create directory for static files
+RUN mkdir -p /app/staticfiles /app/media
+
+# Copy project
+COPY . .
+
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Run gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "config.wsgi:application"]
+"""
+        (path / 'Dockerfile').write_text(dockerfile_content.strip())
+
+    def _create_env_file(self) -> None:
+        """Create .env file with development settings."""
+        env_content = '''
+DEBUG=1
+SECRET_KEY=your-secret-key-here
+DJANGO_SETTINGS_MODULE=config.settings
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+'''
+        env_path = self.base_path / self.project_name / '.env'
+        env_path.write_text(env_content.strip())

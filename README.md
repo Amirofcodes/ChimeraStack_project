@@ -1,6 +1,3 @@
-I'll create a comprehensive README.md that effectively communicates the project's purpose, features, and usage. Then we'll commit all our changes.
-
-````markdown
 # DevStack Factory
 
 DevStack Factory is a powerful, Docker-centric tool designed to streamline the creation of consistent development environments across different machines and deployment targets. It provides an intelligent setup system for PHP and Python projects, ensuring that your development environment is both production-ready and easily reproducible.
@@ -43,6 +40,7 @@ cd devstack-factory
 # Install the package
 pip install -e .
 ```
+
 ````
 
 ## Usage
@@ -123,3 +121,4 @@ For bug reports and feature requests, please open an issue on the GitHub reposit
 ```
 
 ```
+````

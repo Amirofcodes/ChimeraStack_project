@@ -33,6 +33,39 @@ class ConfigurationManager:
         'volumes': ['app_data']
     }
 
+    def initialize_config(
+        self,
+        language: str,
+        framework: str,
+        webserver: str,
+        database: str,
+        environment: str
+    ) -> bool:
+        """
+        Perform initial setup of config for a newly created project.
+        This can load the environment config, update with user choices,
+        and save it back to disk.
+        """
+        try:
+            # 1. Load existing or base config for the environment
+            self.load_config(environment=environment)
+
+            # 2. Merge in user-specified options
+            #    (You can structure these however you prefer in self.config)
+            self.config['language'] = language
+            self.config['framework'] = framework
+            self.config['webserver'] = webserver
+            self.config['database'] = database
+            self.config['environment'] = environment
+
+            # 3. Save to environment-specific YAML
+            self.save_config(environment=environment)
+
+            return True
+        except Exception as e:
+            print(f"Error initializing config: {e}")
+            return False
+
     def __init__(self, project_name: str, base_path: Path):
         self.project_name = project_name
         self.base_path = base_path
@@ -93,4 +126,6 @@ class ConfigurationManager:
         """Generate configuration for all services."""
         services_config = {}
         for service_name, service_data in self.config['services'].items():
-            service_config = S
+            # service_config = S  <-- This is incomplete or a stray debug line
+            ...
+        return services_config

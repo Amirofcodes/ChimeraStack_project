@@ -24,6 +24,9 @@ def init():
         config = wizard.run_setup()
 
         if config:
+            # Convert 'environment' to 'env' for consistency
+            if 'environment' in config:
+                config['env'] = config.pop('environment')
             create_project(**config)
 
     except Exception as e:
@@ -33,36 +36,38 @@ def init():
 @click.argument('project_name')
 @click.option('--language', type=click.Choice(['php', 'python']), required=True,
               help='Primary programming language for the project')
-@click.option('--framework', 
+@click.option('--framework',
               type=click.Choice(['none', 'laravel', 'symfony', 'flask', 'django']),
               default='none',
               help='Web framework to use')
-@click.option('--webserver', 
+@click.option('--webserver',
               type=click.Choice(['nginx', 'apache']),
               default='nginx',
               help='Web server for the project')
-@click.option('--database', 
+@click.option('--database',
               type=click.Choice(['mysql', 'postgresql', 'mariadb']),
               default='mysql',
               help='Database system to use')
-@click.option('--env', 
+@click.option('--env',
               type=click.Choice(['development', 'testing', 'production']),
               default='development',
               help='Environment type')
-def create(project_name: str, language: str, framework: str, 
+def create(project_name: str, language: str, framework: str,
           webserver: str, database: str, env: str):
     """Create a new development environment using specified options."""
-    create_project(project_name, language, framework, webserver, database, env)
+    create_project(project_name=project_name, language=language, 
+                  framework=framework, webserver=webserver, 
+                  database=database, env=env)
 
 def create_project(project_name: str, language: str, framework: str,
                   webserver: str, database: str, env: str):
     """Common project creation logic used by both init and create commands."""
     try:
         project_path = Path.cwd() / project_name
-        
+
         if project_path.exists():
             raise click.ClickException(f"Project directory '{project_name}' already exists")
-        
+
         click.echo(f"\nCreating project: {project_name}")
         click.echo(f"Configuration:")
         click.echo(f"  Language:   {language}")
@@ -70,12 +75,12 @@ def create_project(project_name: str, language: str, framework: str,
         click.echo(f"  Web Server: {webserver}")
         click.echo(f"  Database:   {database}")
         click.echo(f"  Environment:{env}")
-        
+
         # Initialize environment
         environment = Environment(project_name, project_path)
         if not environment.setup():
             raise click.ClickException("Failed to create project directory structure")
-            
+
         click.echo("\nInitializing project structure...")
 
         # Setup configuration
@@ -88,21 +93,21 @@ def create_project(project_name: str, language: str, framework: str,
             environment=env
         ):
             raise click.ClickException("Failed to initialize project configuration")
-        
+
         click.echo("Project configuration created successfully")
 
         # Setup Docker resources
         docker_manager = DockerManager(project_name, project_path)
         if not docker_manager.verify_docker_installation():
             raise click.ClickException("Docker is not available")
-        
+
         try:
             docker_manager.create_network()
             click.echo("Docker network created successfully")
         except Exception as e:
             click.echo(f"Warning: {str(e)}")
             click.echo("Using existing network...")
-        
+
         try:
             docker_manager.create_volume()
             click.echo("Docker volume created successfully")
@@ -114,7 +119,7 @@ def create_project(project_name: str, language: str, framework: str,
         click.echo("\nNext steps:")
         click.echo(f"  1. cd {project_name}")
         click.echo(f"  2. docker-compose up -d")
-        
+
     except Exception as e:
         if 'environment' in locals():
             environment.cleanup()
@@ -128,10 +133,10 @@ def start(project_name: str):
         project_path = Path.cwd() / project_name
         if not project_path.exists():
             raise click.ClickException(f"Project {project_name} not found")
-        
+
         click.echo(f"Starting {project_name} environment...")
         # Implement Docker Compose up
-        
+
     except Exception as e:
         raise click.ClickException(str(e))
 
@@ -143,10 +148,10 @@ def stop(project_name: str):
         project_path = Path.cwd() / project_name
         if not project_path.exists():
             raise click.ClickException(f"Project {project_name} not found")
-        
+
         click.echo(f"Stopping {project_name} environment...")
         # Implement Docker Compose down
-        
+
     except Exception as e:
         raise click.ClickException(str(e))
 

@@ -152,7 +152,7 @@ IncludeOptional conf/extra/*.conf
 
     def _create_security_config(self, config_path: Path) -> None:
         """Create security configuration."""
-        security_config = """
+        security_config = r"""
 # Server security configuration
 ServerTokens Prod
 ServerSignature Off

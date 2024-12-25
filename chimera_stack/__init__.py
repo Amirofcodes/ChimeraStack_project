@@ -1,12 +1,12 @@
 # src/__init__.py
 """
-DevStack Factory
+ChimeraStack
 
 A Docker-centric tool for creating consistent development environments.
 """
 
 __version__ = "0.1.0"
-__author__ = "Jaouad Bouddehbine"
+__author__ = "Amirofcodes"
 __license__ = "MIT"
 
 from .core import Environment, ConfigurationManager, DockerManager

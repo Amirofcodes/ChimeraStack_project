@@ -8,7 +8,7 @@ Laravel installation and project structure conventions.
 from pathlib import Path
 from typing import Dict, Any
 import subprocess
-from devstack_factory.frameworks.php.base_php import BasePHPFramework
+from chimera_stack.frameworks.php.base_php import BasePHPFramework
 
 class LaravelFramework(BasePHPFramework):
     """Laravel framework implementation focusing on Docker environment setup."""
@@ -35,15 +35,22 @@ class LaravelFramework(BasePHPFramework):
     def initialize_project(self) -> bool:
         """Initialize Laravel project using Docker."""
         try:
+            self.ensure_directories()
+            
+            # Use Composer to create Laravel project in src directory
             subprocess.run([
                 'docker', 'run', '--rm',
                 '-v', f'{self.base_path}:/app',
-                '-w', '/app',
+                '-w', '/app/src',
                 'composer:latest',
                 'create-project',
                 'laravel/laravel',
-                self.project_name
+                '.'
             ], check=True)
+            
+            # Create necessary Docker configurations
+            self._create_docker_configs()
+            
             return True
         except subprocess.CalledProcessError as e:
             print(f"Error initializing Laravel project: {e}")
@@ -59,7 +66,7 @@ class LaravelFramework(BasePHPFramework):
                         'dockerfile': 'docker/php/Dockerfile'
                     },
                     'volumes': [
-                        '.:/var/www/html:cached',
+                        './src:/var/www/html:cached',
                         './docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini:ro'
                     ],
                     'depends_on': ['mysql']
@@ -68,7 +75,7 @@ class LaravelFramework(BasePHPFramework):
                     'image': 'nginx:alpine',
                     'ports': [f"{self.get_default_ports()['web']}:80"],
                     'volumes': [
-                        '.:/var/www/html:cached',
+                        './src:/var/www/html:cached',
                         './docker/nginx/conf.d:/etc/nginx/conf.d:ro'
                     ],
                     'depends_on': ['php']
@@ -83,7 +90,7 @@ class LaravelFramework(BasePHPFramework):
                     },
                     'ports': [f"{self.get_default_ports()['database']}:3306"],
                     'volumes': [
-                        'mysql-data:/var/lib/mysql:cached'
+                        'mysql_data:/var/lib/mysql:cached'
                     ]
                 },
                 'redis': {
@@ -92,7 +99,7 @@ class LaravelFramework(BasePHPFramework):
                 }
             },
             'volumes': {
-                'mysql-data': None
+                'mysql_data': None
             }
         }
         return config
@@ -108,7 +115,7 @@ class LaravelFramework(BasePHPFramework):
     def setup_development_environment(self) -> bool:
         """Set up Laravel development environment configurations."""
         try:
-            self._create_docker_configs()
+            self._create_env_file()
             return True
         except Exception as e:
             print(f"Error setting up Laravel environment: {e}")
@@ -116,15 +123,21 @@ class LaravelFramework(BasePHPFramework):
 
     def _create_docker_configs(self) -> None:
         """Create necessary Docker configuration files."""
-        docker_path = self.base_path / self.project_name / 'docker'
-        docker_path.mkdir(exist_ok=True)
-
-        self._create_php_dockerfile(docker_path / 'php')
-        self._create_nginx_config(docker_path / 'nginx')
+        # Create PHP configuration
+        php_path = self.docker_path / 'php'
+        php_path.mkdir(exist_ok=True, parents=True)
+        
+        self._create_php_dockerfile(php_path)
+        self._create_php_config(php_path)
+        
+        # Create Nginx configuration
+        nginx_path = self.docker_path / 'nginx'
+        nginx_path.mkdir(exist_ok=True, parents=True)
+        
+        self._create_nginx_config(nginx_path)
 
     def _create_php_dockerfile(self, path: Path) -> None:
         """Generate PHP Dockerfile with Laravel requirements."""
-        path.mkdir(exist_ok=True)
         dockerfile_content = f"""
 FROM {self.docker_requirements['php']['image']}
 
@@ -149,23 +162,30 @@ WORKDIR /var/www/html
 """
         (path / 'Dockerfile').write_text(dockerfile_content.strip())
 
-        # Create PHP configuration
+    def _create_php_config(self, path: Path) -> None:
+        """Generate PHP configuration file."""
         php_ini_content = """
-upload_max_filesize=40M
-post_max_size=40M
-memory_limit=512M
+upload_max_filesize = 40M
+post_max_size = 40M
+memory_limit = 512M
+max_execution_time = 600
+default_socket_timeout = 3600
+request_terminate_timeout = 600
 """
         (path / 'local.ini').write_text(php_ini_content.strip())
 
     def _create_nginx_config(self, path: Path) -> None:
         """Generate Nginx configuration for Laravel."""
-        path.mkdir(exist_ok=True)
-        nginx_config = """
+        conf_d_path = path / 'conf.d'
+        conf_d_path.mkdir(exist_ok=True, parents=True)
+        
+        nginx_config = r"""
 server {
     listen 80;
     index index.php index.html;
     server_name localhost;
     root /var/www/html/public;
+    client_max_body_size 40m;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -176,8 +196,46 @@ server {
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
+        fastcgi_read_timeout 600;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
     }
 }
 """
-        (path / 'conf.d').mkdir(exist_ok=True)
-        (path / 'conf.d' / 'app.conf').write_text(nginx_config.strip())
+        (conf_d_path / 'default.conf').write_text(nginx_config.strip())
+
+    def _create_env_file(self) -> None:
+        """Create Laravel .env file with development settings."""
+        env_content = """
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost:8080
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=secret
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=redis
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
+SESSION_LIFETIME=120
+
+REDIS_HOST=redis
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+"""
+        env_path = self.src_path / '.env'
+        env_path.write_text(env_content.strip())

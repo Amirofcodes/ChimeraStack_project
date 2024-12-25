@@ -6,7 +6,7 @@ Provides common functionality for PHP-based frameworks.
 
 from pathlib import Path
 from typing import Dict, Any
-from devstack_factory.frameworks.base import BaseFramework
+from chimera_stack.frameworks.base import BaseFramework
 
 class BasePHPFramework(BaseFramework):
     """Base class for PHP frameworks."""

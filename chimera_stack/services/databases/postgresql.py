@@ -23,6 +23,23 @@ class PostgreSQLService(BaseDatabase):
             'shm_size': '256mb'  # Shared memory for better performance
         })
 
+    def generate_server_config(self) -> bool:
+        """Generate server-specific configuration files."""
+        try:
+            config_path = self.base_path / self.project_name / 'docker' / 'postgres'
+            config_path.mkdir(parents=True, exist_ok=True)
+            
+            # Create initialization directory and scripts
+            init_path = config_path / 'init'
+            init_path.mkdir(exist_ok=True)
+            
+            # Create configuration files
+            self._create_postgresql_config()
+            return True
+        except Exception as e:
+            print(f"Error generating PostgreSQL configuration: {e}")
+            return False
+    
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for PostgreSQL."""
         volume_name = f"{self.project_name}_postgres_data"

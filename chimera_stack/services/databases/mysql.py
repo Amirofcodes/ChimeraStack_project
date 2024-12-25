@@ -1,10 +1,8 @@
-# src/services/databases/mysql.py
-
 """
 MySQL Database Service Implementation
 
 Provides specialized configuration and management for MySQL database services
-in development environments. This implementation includes optimizations and 
+in development environments. This implementation includes optimizations and
 configurations suitable for development and production use.
 """
 
@@ -26,12 +24,13 @@ class MySQLService(BaseDatabase):
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MySQL."""
         volume_name = f"{self.project_name}_mysql_data"
-        
+        port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
+
         config = {
             'services': {
                 'mysql': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:3306"],
+                    'ports': [f"{port}:3306"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/mysql",
@@ -44,8 +43,20 @@ class MySQLService(BaseDatabase):
                 volume_name: None
             }
         }
-        
+
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for MySQL."""
@@ -70,17 +81,12 @@ class MySQLService(BaseDatabase):
             'start_period': '30s'
         }
 
-    def generate_connection_string(self) -> str:
-        """Generate a MySQL connection string."""
-        return 'mysql://${DB_USER}:${DB_PASSWORD}@mysql:3306/${DB_NAME}'
-
     def generate_server_config(self) -> bool:
         """Generate server-specific configuration files."""
         try:
             config_path = self.base_path / 'docker' / 'mysql'
             config_path.mkdir(parents=True, exist_ok=True)
-            
-            # Create MySQL configuration
+
             mysql_config = """
 [mysqld]
 # Character Set Configuration
@@ -129,30 +135,8 @@ default-character-set = utf8mb4
 default-character-set = utf8mb4
 """
             (config_path / 'my.cnf').write_text(mysql_config.strip())
-            
+
             return True
         except Exception as e:
             print(f"Error generating MySQL configuration: {e}")
             return False
-
-    def get_backup_config(self) -> Dict[str, Any]:
-        """Generate backup configuration for MySQL."""
-        return {
-            'services': {
-                'mysql-backup': {
-                    'image': 'databack/mysql-backup',
-                    'environment': {
-                        'DB_DUMP_TARGET': '/backup',
-                        'DB_USER': '${DB_USER}',
-                        'DB_PASS': '${DB_PASSWORD}',
-                        'DB_DUMP_FREQ': '24',
-                        'DB_DUMP_BEGIN': '0000',
-                        'DB_SERVER': 'mysql'
-                    },
-                    'volumes': [
-                        './backups:/backup'
-                    ],
-                    'depends_on': ['mysql']
-                }
-            }
-        }

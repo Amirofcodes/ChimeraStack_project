@@ -1,5 +1,3 @@
-# src/services/databases/mariadb.py
-
 """
 MariaDB Database Service Implementation
 
@@ -26,12 +24,13 @@ class MariaDBService(BaseDatabase):
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MariaDB."""
         volume_name = f"{self.project_name}_mariadb_data"
-        
+        port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
+
         config = {
             'services': {
                 'mariadb': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:3306"],
+                    'ports': [f"{port}:3306"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/mysql",
@@ -46,10 +45,19 @@ class MariaDBService(BaseDatabase):
             }
         }
 
-        # Set up MariaDB configuration
-        self._create_mariadb_config()
-        
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for MariaDB."""

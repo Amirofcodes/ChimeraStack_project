@@ -24,9 +24,6 @@ def init():
         config = wizard.run_setup()
 
         if config:
-            # Convert 'environment' to 'env' for consistency
-            if 'environment' in config:
-                config['env'] = config.pop('environment')
             create_project(**config)
 
     except Exception as e:

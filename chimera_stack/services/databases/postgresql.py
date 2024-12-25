@@ -1,10 +1,8 @@
-# src/services/databases/postgresql.py
-
 """
 PostgreSQL Database Service Implementation
 
 Provides specialized configuration and management for PostgreSQL database services
-in development environments. This implementation includes optimizations and 
+in development environments. This implementation includes optimizations and
 best practices for both development and production scenarios.
 """
 
@@ -23,32 +21,16 @@ class PostgreSQLService(BaseDatabase):
             'shm_size': '256mb'  # Shared memory for better performance
         })
 
-    def generate_server_config(self) -> bool:
-        """Generate server-specific configuration files."""
-        try:
-            config_path = self.base_path / self.project_name / 'docker' / 'postgres'
-            config_path.mkdir(parents=True, exist_ok=True)
-            
-            # Create initialization directory and scripts
-            init_path = config_path / 'init'
-            init_path.mkdir(exist_ok=True)
-            
-            # Create configuration files
-            self._create_postgresql_config()
-            return True
-        except Exception as e:
-            print(f"Error generating PostgreSQL configuration: {e}")
-            return False
-    
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for PostgreSQL."""
         volume_name = f"{self.project_name}_postgres_data"
-        
+        port = self._get_available_port(5432, 5500)  # Try ports between 5432 and 5500
+
         config = {
             'services': {
                 'postgres': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:5432"],
+                    'ports': [f"{port}:5432"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/postgresql/data",
@@ -62,10 +44,19 @@ class PostgreSQLService(BaseDatabase):
             }
         }
 
-        # Set up PostgreSQL configuration
-        self._create_postgresql_config()
-        
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for PostgreSQL."""

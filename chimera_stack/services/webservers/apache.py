@@ -1,5 +1,3 @@
-# src/services/webservers/apache.py
-
 """
 Apache Web Server Service Implementation
 
@@ -25,17 +23,28 @@ class ApacheService(BaseWebServer):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for Apache."""
+        http_port = self._get_available_port(8000, 8100)  # Try ports between 8000 and 8100
+        https_port = self._get_available_port(8443, 8543)  # Try ports between 8443 and 8543
+
         config = {
             'services': {
                 'apache': {
                     **self.config,
-                    'ports': self._get_port_mappings(),
-                    'volumes': self._get_volume_mappings(),
-                    'depends_on': self._get_dependencies(),
+                    'ports': [
+                        f"{http_port}:80",
+                        f"{https_port}:443" if self.ssl_enabled else None
+                    ],
+                    'volumes': [
+                        '.:/var/www/html:cached',
+                        './docker/apache/conf/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro',
+                        './docker/apache/conf/extra:/usr/local/apache2/conf/extra:ro',
+                        'apache_logs:/var/log/apache2'
+                    ],
                     'environment': {
                         'APACHE_RUN_USER': 'www-data',
                         'APACHE_RUN_GROUP': 'www-data'
                     },
+                    'depends_on': self._get_dependencies(),
                     'healthcheck': self.get_health_check()
                 }
             },
@@ -43,15 +52,27 @@ class ApacheService(BaseWebServer):
                 'apache_logs': None
             }
         }
-        
-        # Generate Apache configuration files
-        self.generate_server_config()
-        
+
+        # Remove None values from ports list
+        config['services']['apache']['ports'] = [p for p in config['services']['apache']['ports'] if p is not None]
+
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for Apache."""
-        return 80
+        return 8000
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for Apache."""
@@ -62,15 +83,33 @@ class ApacheService(BaseWebServer):
             'retries': 3
         }
 
+    def _get_dependencies(self) -> List[str]:
+        """Determine service dependencies based on project configuration."""
+        dependencies = []
+        if self._uses_php():
+            dependencies.append('php')
+        return dependencies
+
+    def _uses_php(self) -> bool:
+        """Determine if the project uses PHP."""
+        return True  # For now, always return True
+
+    def get_default_ports(self) -> Dict[str, int]:
+        """Return default ports for Apache development."""
+        return {
+            'http': 8000,
+            'https': 8443
+        }
+
     def generate_server_config(self) -> None:
         """Generate Apache configuration files."""
-        config_path = self.base_path / self.project_name / 'docker' / 'apache'
+        config_path = self.base_path / 'docker' / 'apache'
         config_path.mkdir(parents=True, exist_ok=True)
 
         # Create configuration directories
         conf_path = config_path / 'conf'
         conf_path.mkdir(exist_ok=True)
-        
+
         # Generate main configuration files
         self._create_main_config(conf_path)
         self._create_vhost_config(conf_path)

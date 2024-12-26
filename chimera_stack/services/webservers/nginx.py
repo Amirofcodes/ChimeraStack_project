@@ -1,5 +1,3 @@
-# src/services/webservers/nginx.py
-
 """
 Nginx Web Server Service Implementation
 
@@ -24,11 +22,17 @@ class NginxService(BaseWebServer):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for Nginx."""
+        http_port = self._get_available_port(8000, 8100)  # Try ports between 8000 and 8100
+        https_port = self._get_available_port(8443, 8543)  # Try ports between 8443 and 8543
+        
         config = {
             'services': {
                 'nginx': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:80"],
+                    'ports': [
+                        f"{http_port}:80",
+                        f"{https_port}:443" if self.ssl_enabled else None
+                    ],
                     'volumes': [
                         '.:/var/www/html:cached',
                         './docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
@@ -39,11 +43,27 @@ class NginxService(BaseWebServer):
                 }
             }
         }
+        
+        # Remove None values from ports list
+        config['services']['nginx']['ports'] = [p for p in config['services']['nginx']['ports'] if p is not None]
+        
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for Nginx."""
-        return 80
+        return 8000
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for Nginx."""
@@ -129,6 +149,12 @@ server {
     add_header X-Content-Type-Options "nosniff";
     add_header Referrer-Policy "strict-origin-when-cross-origin";
 
+    # Health check endpoint
+    location /ping {
+        access_log off;
+        return 200 'healthy\n';
+    }
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
@@ -147,11 +173,11 @@ server {
         fastcgi_read_timeout 300;
     }
 
-    location ~ /\\.(?!well-known) {
-    deny all;
-    access_log off;
-    log_not_found off;
-}
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
 
     # Optimization for static files
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {

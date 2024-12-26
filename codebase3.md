@@ -75,7 +75,9 @@ def init():
 def create(project_name: str, language: str, framework: str,
           webserver: str, database: str, env: str):
     """Create a new development environment using specified options."""
-    create_project(project_name, language, framework, webserver, database, env)
+    create_project(project_name=project_name, language=language,
+                  framework=framework, webserver=webserver,
+                  database=database, env=env)
 
 def create_project(project_name: str, language: str, framework: str,
                   webserver: str, database: str, env: str):
@@ -472,8 +474,6 @@ class ConfigurationManager:
 # chimera_stack/core/docker_manager.py
 
 ```py
-# src/core/docker_manager.py
-
 """
 Docker Management Module
 
@@ -481,8 +481,7 @@ Handles Docker operations including container management, network setup,
 and volume handling for development environments.
 """
 
-import docker
-from docker.errors import DockerException
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -492,57 +491,103 @@ class DockerManager:
     def __init__(self, project_name: str, base_path: Path):
         self.project_name = project_name
         self.base_path = base_path
-        self.client = docker.from_env()
         self.networks: Dict = {}
         self.volumes: Dict = {}
 
     def verify_docker_installation(self) -> bool:
         """Verify Docker is installed and running."""
         try:
-            self.client.ping()
+            subprocess.run(['docker', 'info'], capture_output=True, check=True)
             return True
-        except DockerException:
+        except subprocess.CalledProcessError:
             return False
 
     def create_network(self, network_name: Optional[str] = None) -> bool:
         """Create a Docker network for the project."""
         try:
             name = network_name or f"{self.project_name}_network"
-            network = self.client.networks.create(
-                name,
-                driver="bridge",
-                labels={"project": self.project_name}
+            result = subprocess.run(
+                ['docker', 'network', 'create', name],
+                capture_output=True,
+                text=True,
+                check=True
             )
-            self.networks[name] = network
+            self.networks[name] = name
             return True
-        except DockerException as e:
-            print(f"Error creating network: {e}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error creating network: {e.stderr}")
             return False
 
     def create_volume(self, volume_name: Optional[str] = None) -> bool:
         """Create a Docker volume for persistent data."""
         try:
             name = volume_name or f"{self.project_name}_data"
-            volume = self.client.volumes.create(
-                name,
-                labels={"project": self.project_name}
+            result = subprocess.run(
+                ['docker', 'volume', 'create', name],
+                capture_output=True,
+                text=True,
+                check=True
             )
-            self.volumes[name] = volume
+            self.volumes[name] = name
             return True
-        except DockerException as e:
-            print(f"Error creating volume: {e}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error creating volume: {e.stderr}")
+            return False
+
+    def start_environment(self) -> bool:
+        """Start the Docker environment using docker-compose."""
+        try:
+            result = subprocess.run(
+                ['docker-compose', 'up', '-d'],
+                cwd=self.base_path,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"Error starting environment: {e.stderr}")
+            return False
+        except Exception as e:
+            print(f"Error starting environment: {e}")
+            return False
+
+    def stop_environment(self) -> bool:
+        """Stop the Docker environment using docker-compose."""
+        try:
+            result = subprocess.run(
+                ['docker-compose', 'down'],
+                cwd=self.base_path,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"Error stopping environment: {e.stderr}")
+            return False
+        except Exception as e:
+            print(f"Error stopping environment: {e}")
             return False
 
     def cleanup(self) -> bool:
         """Clean up Docker resources created for the project."""
         try:
             for network in self.networks.values():
-                network.remove()
+                subprocess.run(
+                    ['docker', 'network', 'rm', network],
+                    capture_output=True,
+                    check=True
+                )
             for volume in self.volumes.values():
-                volume.remove()
+                subprocess.run(
+                    ['docker', 'volume', 'rm', volume],
+                    capture_output=True,
+                    check=True
+                )
             return True
-        except DockerException as e:
-            print(f"Error during cleanup: {e}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error during cleanup: {e.stderr}")
             return False
 ```
 
@@ -2617,8 +2662,6 @@ class BaseDatabase(ABC):
 # chimera_stack/services/databases/mariadb.py
 
 ```py
-# src/services/databases/mariadb.py
-
 """
 MariaDB Database Service Implementation
 
@@ -2645,12 +2688,13 @@ class MariaDBService(BaseDatabase):
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MariaDB."""
         volume_name = f"{self.project_name}_mariadb_data"
+        port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
 
         config = {
             'services': {
                 'mariadb': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:3306"],
+                    'ports': [f"{port}:3306"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/mysql",
@@ -2665,10 +2709,19 @@ class MariaDBService(BaseDatabase):
             }
         }
 
-        # Set up MariaDB configuration
-        self._create_mariadb_config()
-
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for MariaDB."""
@@ -2792,8 +2845,6 @@ EOSQL
 # chimera_stack/services/databases/mysql.py
 
 ```py
-# src/services/databases/mysql.py
-
 """
 MySQL Database Service Implementation
 
@@ -2820,12 +2871,13 @@ class MySQLService(BaseDatabase):
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MySQL."""
         volume_name = f"{self.project_name}_mysql_data"
+        port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
 
         config = {
             'services': {
                 'mysql': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:3306"],
+                    'ports': [f"{port}:3306"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/mysql",
@@ -2840,6 +2892,18 @@ class MySQLService(BaseDatabase):
         }
 
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for MySQL."""
@@ -2864,17 +2928,12 @@ class MySQLService(BaseDatabase):
             'start_period': '30s'
         }
 
-    def generate_connection_string(self) -> str:
-        """Generate a MySQL connection string."""
-        return 'mysql://${DB_USER}:${DB_PASSWORD}@mysql:3306/${DB_NAME}'
-
     def generate_server_config(self) -> bool:
         """Generate server-specific configuration files."""
         try:
             config_path = self.base_path / 'docker' / 'mysql'
             config_path.mkdir(parents=True, exist_ok=True)
 
-            # Create MySQL configuration
             mysql_config = """
 [mysqld]
 # Character Set Configuration
@@ -2928,35 +2987,11 @@ default-character-set = utf8mb4
         except Exception as e:
             print(f"Error generating MySQL configuration: {e}")
             return False
-
-    def get_backup_config(self) -> Dict[str, Any]:
-        """Generate backup configuration for MySQL."""
-        return {
-            'services': {
-                'mysql-backup': {
-                    'image': 'databack/mysql-backup',
-                    'environment': {
-                        'DB_DUMP_TARGET': '/backup',
-                        'DB_USER': '${DB_USER}',
-                        'DB_PASS': '${DB_PASSWORD}',
-                        'DB_DUMP_FREQ': '24',
-                        'DB_DUMP_BEGIN': '0000',
-                        'DB_SERVER': 'mysql'
-                    },
-                    'volumes': [
-                        './backups:/backup'
-                    ],
-                    'depends_on': ['mysql']
-                }
-            }
-        }
 ```
 
 # chimera_stack/services/databases/postgresql.py
 
 ```py
-# src/services/databases/postgresql.py
-
 """
 PostgreSQL Database Service Implementation
 
@@ -2980,32 +3015,16 @@ class PostgreSQLService(BaseDatabase):
             'shm_size': '256mb'  # Shared memory for better performance
         })
 
-    def generate_server_config(self) -> bool:
-        """Generate server-specific configuration files."""
-        try:
-            config_path = self.base_path / self.project_name / 'docker' / 'postgres'
-            config_path.mkdir(parents=True, exist_ok=True)
-
-            # Create initialization directory and scripts
-            init_path = config_path / 'init'
-            init_path.mkdir(exist_ok=True)
-
-            # Create configuration files
-            self._create_postgresql_config()
-            return True
-        except Exception as e:
-            print(f"Error generating PostgreSQL configuration: {e}")
-            return False
-
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for PostgreSQL."""
         volume_name = f"{self.project_name}_postgres_data"
+        port = self._get_available_port(5432, 5500)  # Try ports between 5432 and 5500
 
         config = {
             'services': {
                 'postgres': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:5432"],
+                    'ports': [f"{port}:5432"],
                     'environment': self.get_environment_variables(),
                     'volumes': [
                         f"{volume_name}:/var/lib/postgresql/data",
@@ -3019,10 +3038,19 @@ class PostgreSQLService(BaseDatabase):
             }
         }
 
-        # Set up PostgreSQL configuration
-        self._create_postgresql_config()
-
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for PostgreSQL."""
@@ -3158,8 +3186,6 @@ __all__ = ['NginxService', 'ApacheService']
 # chimera_stack/services/webservers/apache.py
 
 ```py
-# src/services/webservers/apache.py
-
 """
 Apache Web Server Service Implementation
 
@@ -3185,17 +3211,28 @@ class ApacheService(BaseWebServer):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for Apache."""
+        http_port = self._get_available_port(8000, 8100)  # Try ports between 8000 and 8100
+        https_port = self._get_available_port(8443, 8543)  # Try ports between 8443 and 8543
+
         config = {
             'services': {
                 'apache': {
                     **self.config,
-                    'ports': self._get_port_mappings(),
-                    'volumes': self._get_volume_mappings(),
-                    'depends_on': self._get_dependencies(),
+                    'ports': [
+                        f"{http_port}:80",
+                        f"{https_port}:443" if self.ssl_enabled else None
+                    ],
+                    'volumes': [
+                        '.:/var/www/html:cached',
+                        './docker/apache/conf/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro',
+                        './docker/apache/conf/extra:/usr/local/apache2/conf/extra:ro',
+                        'apache_logs:/var/log/apache2'
+                    ],
                     'environment': {
                         'APACHE_RUN_USER': 'www-data',
                         'APACHE_RUN_GROUP': 'www-data'
                     },
+                    'depends_on': self._get_dependencies(),
                     'healthcheck': self.get_health_check()
                 }
             },
@@ -3204,14 +3241,26 @@ class ApacheService(BaseWebServer):
             }
         }
 
-        # Generate Apache configuration files
-        self.generate_server_config()
+        # Remove None values from ports list
+        config['services']['apache']['ports'] = [p for p in config['services']['apache']['ports'] if p is not None]
 
         return config
 
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
+
     def get_default_port(self) -> int:
         """Return the default port for Apache."""
-        return 80
+        return 8000
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for Apache."""
@@ -3222,9 +3271,27 @@ class ApacheService(BaseWebServer):
             'retries': 3
         }
 
+    def _get_dependencies(self) -> List[str]:
+        """Determine service dependencies based on project configuration."""
+        dependencies = []
+        if self._uses_php():
+            dependencies.append('php')
+        return dependencies
+
+    def _uses_php(self) -> bool:
+        """Determine if the project uses PHP."""
+        return True  # For now, always return True
+
+    def get_default_ports(self) -> Dict[str, int]:
+        """Return default ports for Apache development."""
+        return {
+            'http': 8000,
+            'https': 8443
+        }
+
     def generate_server_config(self) -> None:
         """Generate Apache configuration files."""
-        config_path = self.base_path / self.project_name / 'docker' / 'apache'
+        config_path = self.base_path / 'docker' / 'apache'
         config_path.mkdir(parents=True, exist_ok=True)
 
         # Create configuration directories
@@ -3408,8 +3475,6 @@ Header always set Strict-Transport-Security "max-age=63072000"
 # chimera_stack/services/webservers/base.py
 
 ```py
-# src/services/webservers/base.py
-
 """
 Base Web Server Service Implementation
 
@@ -3420,7 +3485,7 @@ implementations.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 
 class BaseWebServer(ABC):
     """Abstract base class for web server implementations."""
@@ -3430,15 +3495,13 @@ class BaseWebServer(ABC):
         self.base_path = base_path
         self.config: Dict[str, Any] = {}
         self.ssl_enabled = False
+        self.ssl_certificate: Optional[str] = None
+        self.ssl_key: Optional[str] = None
+        self._allocated_ports: List[int] = []
 
     @abstractmethod
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for the web server."""
-        pass
-
-    @abstractmethod
-    def get_default_port(self) -> int:
-        """Return the default port for the web server."""
         pass
 
     @abstractmethod
@@ -3452,185 +3515,39 @@ class BaseWebServer(ABC):
         self.ssl_certificate = certificate_path
         self.ssl_key = key_path
 
-class NginxService(BaseWebServer):
-    """Nginx web server service implementation."""
-
-    def __init__(self, project_name: str, base_path: Path):
-        super().__init__(project_name, base_path)
-        self.config.update({
-            'image': 'nginx:alpine',
-            'restart': 'unless-stopped'
-        })
-
-    def get_docker_config(self) -> Dict[str, Any]:
-        """Generate Docker service configuration for Nginx."""
-        config = {
-            'services': {
-                'nginx': {
-                    **self.config,
-                    'ports': self._get_port_mappings(),
-                    'volumes': self._get_volume_mappings(),
-                    'depends_on': ['php'] if self._uses_php() else [],
-                    'healthcheck': self.get_health_check()
-                }
-            }
-        }
-
-        # Generate Nginx configuration files
-        self.generate_server_config()
-
-        return config
-
-    def get_default_port(self) -> int:
-        """Return the default port for Nginx."""
-        return 80
-
-    def get_health_check(self) -> Dict[str, Any]:
-        """Generate health check configuration for Nginx."""
+    def get_default_ports(self) -> Dict[str, int]:
+        """Return default ports for the web server."""
         return {
-            'test': ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost'],
-            'interval': '10s',
-            'timeout': '5s',
-            'retries': 3
+            'http': 8000,
+            'https': 8443
         }
 
-    def generate_server_config(self) -> None:
-        """Generate Nginx configuration files."""
-        config_path = self.base_path / self.project_name / 'docker' / 'nginx'
-        config_path.mkdir(parents=True, exist_ok=True)
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            if port in self._allocated_ports:
+                continue
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    self._allocated_ports.append(port)
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
-        # Create conf.d directory
-        conf_d_path = config_path / 'conf.d'
-        conf_d_path.mkdir(exist_ok=True)
+    def get_allocated_ports(self) -> List[int]:
+        """Return list of ports allocated by this service."""
+        return self._allocated_ports.copy()
 
-        # Generate main configuration
-        self._create_main_config(conf_d_path)
-
-        # Generate SSL configuration if enabled
-        if self.ssl_enabled:
-            self._create_ssl_config(conf_d_path)
-
-        # Generate optimization configuration
-        self._create_optimization_config(config_path)
-
-    def _create_main_config(self, config_path: Path) -> None:
-        """Create main Nginx server configuration."""
-        main_config = f"""
-server {{
-    listen 80;
-    server_name localhost;
-    root /var/www/html/public;
-    index index.php index.html;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Content-Type-Options "nosniff";
-
-    # Logging configuration
-    access_log /var/log/nginx/access.log combined buffer=512k flush=1m;
-    error_log /var/log/nginx/error.log warn;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1000;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript;
-
-    location / {{
-        try_files $uri $uri/ /index.php?$query_string;
-    }}
-
-    {self._get_php_location() if self._uses_php() else ''}
-
-    # Deny access to sensitive files
-    location ~ /\. {{
-        deny all;
-        access_log off;
-        log_not_found off;
-    }}
-}}
-"""
-        (config_path / 'default.conf').write_text(main_config.strip())
-
-    def _create_ssl_config(self, config_path: Path) -> None:
-        """Create SSL configuration for Nginx."""
-        ssl_config = f"""
-server {{
-    listen 443 ssl http2;
-    server_name localhost;
-    root /var/www/html/public;
-
-    ssl_certificate {self.ssl_certificate};
-    ssl_certificate_key {self.ssl_key};
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:50m;
-    ssl_session_tickets off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-    # Add your SSL specific configurations here
-}}
-"""
-        (config_path / 'ssl.conf').write_text(ssl_config.strip())
-
-    def _create_optimization_config(self, config_path: Path) -> None:
-        """Create performance optimization configuration."""
-        optimization_config = """
-worker_processes auto;
-worker_rlimit_nofile 65535;
-
-events {
-    multi_accept on;
-    worker_connections 65535;
-}
-
-http {
-    charset utf-8;
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    server_tokens off;
-    log_not_found off;
-    types_hash_max_size 2048;
-    client_max_body_size 16M;
-
-    # MIME
-    include mime.types;
-    default_type application/octet-stream;
-
-    # Logging
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log warn;
-
-    # Load configs
-    include /etc/nginx/conf.d/*.conf;
-}
-"""
-        (config_path / 'nginx.conf').write_text(optimization_config.strip())
-
-    def _get_port_mappings(self) -> List[str]:
-        """Generate port mappings for the service."""
-        ports = [f"{self.get_default_port()}:80"]
-        if self.ssl_enabled:
-            ports.append("443:443")
-        return ports
-
-    def _get_volume_mappings(self) -> List[str]:
-        """Generate volume mappings for the service."""
-        return [
-            '.:/var/www/html:cached',
-            './docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
-            './docker/nginx/conf.d:/etc/nginx/conf.d:ro',
-            'nginx_logs:/var/log/nginx'
-        ]
+    def release_ports(self) -> None:
+        """Release all allocated ports."""
+        self._allocated_ports.clear()
 
     def _uses_php(self) -> bool:
         """Determine if the project uses PHP."""
-        # This could be enhanced to check project configuration
+        # This should be implemented by child classes or moved to a project config
         return True
 
     def _get_php_location(self) -> str:
@@ -3651,8 +3568,6 @@ http {
 # chimera_stack/services/webservers/nginx.py
 
 ```py
-# src/services/webservers/nginx.py
-
 """
 Nginx Web Server Service Implementation
 
@@ -3677,11 +3592,17 @@ class NginxService(BaseWebServer):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for Nginx."""
+        http_port = self._get_available_port(8000, 8100)  # Try ports between 8000 and 8100
+        https_port = self._get_available_port(8443, 8543)  # Try ports between 8443 and 8543
+
         config = {
             'services': {
                 'nginx': {
                     **self.config,
-                    'ports': [f"{self.get_default_port()}:80"],
+                    'ports': [
+                        f"{http_port}:80",
+                        f"{https_port}:443" if self.ssl_enabled else None
+                    ],
                     'volumes': [
                         '.:/var/www/html:cached',
                         './docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
@@ -3692,11 +3613,27 @@ class NginxService(BaseWebServer):
                 }
             }
         }
+
+        # Remove None values from ports list
+        config['services']['nginx']['ports'] = [p for p in config['services']['nginx']['ports'] if p is not None]
+
         return config
+
+    def _get_available_port(self, start_port: int, end_port: int) -> int:
+        """Find an available port in the specified range."""
+        import socket
+        for port in range(start_port, end_port + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('', port))
+                    return port
+                except OSError:
+                    continue
+        return start_port  # Fallback to default if no ports are available
 
     def get_default_port(self) -> int:
         """Return the default port for Nginx."""
-        return 80
+        return 8000
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for Nginx."""
@@ -3782,6 +3719,12 @@ server {
     add_header X-Content-Type-Options "nosniff";
     add_header Referrer-Policy "strict-origin-when-cross-origin";
 
+    # Health check endpoint
+    location /ping {
+        access_log off;
+        return 200 'healthy\n';
+    }
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
@@ -3800,11 +3743,11 @@ server {
         fastcgi_read_timeout 300;
     }
 
-    location ~ /\\.(?!well-known) {
-    deny all;
-    access_log off;
-    log_not_found off;
-}
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
 
     # Optimization for static files
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {

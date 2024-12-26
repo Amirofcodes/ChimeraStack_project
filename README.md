@@ -1,6 +1,6 @@
-# DevStack Factory
+# ChimeraStack
 
-DevStack Factory is a **Docker-centric tool** that simplifies the creation of consistent, production-ready development environments for **PHP** and **Python** projects. By combining an intelligent setup system with Docker’s reliability, DevStack Factory ensures your environment is easily reproducible, whether you’re coding locally, testing in staging, or deploying to production.
+ChimeraStack is a **Docker-centric tool** that simplifies the creation of consistent, production-ready development environments for **PHP** and **Python** projects. By combining an intelligent setup system with Docker's reliability, ChimeraStack ensures your environment is easily reproducible, whether you're coding locally, testing in staging, or deploying to production.
 
 ---
 
@@ -36,15 +36,17 @@ DevStack Factory is a **Docker-centric tool** that simplifies the creation of co
 
 - **Environment-specific Configurations**
 
-  - **Development**: Optimized for local development
+  - **Development**: Optimized for local development with dynamic port allocation
   - **Testing**: Perfect for staging and integration tests
   - **Production**: Secure and performance-tuned
 
 - **Intelligent Project Scaffolding**  
-  Respects framework conventions, creating a boilerplate that follows best practices.
+  Respects framework conventions while maintaining a clean, organized structure.
 
-- **Automated Docker Resource Management**  
-  Abstracts away the complexity of handling multiple containers and services.
+- **Automated Docker Resource Management**
+  - Dynamic port allocation to prevent conflicts
+  - Efficient container orchestration
+  - Automatic cleanup and resource management
 
 ---
 
@@ -63,29 +65,29 @@ Make sure you have the following installed:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Amirofcodes/devstack-factory.git
+   git clone https://github.com/Amirofcodes/chimera-stack.git
    ```
 2. **Navigate to the project directory:**
    ```bash
-   cd devstack-factory
+   cd chimera-stack
    ```
 3. **Install the package (in editable mode):**
    ```bash
    pip install -e .
    ```
 
-Once installed, you’ll have access to the `devstack` command-line interface (CLI).
+Once installed, you'll have access to the `chimera` command-line interface (CLI).
 
 ---
 
 ## Usage
 
-DevStack Factory provides a straightforward CLI for creating and managing project environments.
+ChimeraStack provides a straightforward CLI for creating and managing project environments.
 
 ### Create a New Project
 
 ```bash
-devstack create myproject --language php --framework laravel
+chimera create myproject --language php --framework laravel
 ```
 
 **Available options**:
@@ -96,25 +98,29 @@ devstack create myproject --language php --framework laravel
 - `--database`: `mysql` | `postgresql` | `mariadb`
 - `--env`: `development` | `testing` | `production`
 
-### Start an Existing Environment
+### Interactive Setup
+
+For guided setup:
 
 ```bash
-devstack start myproject
+chimera init
 ```
 
-### Stop an Environment
+### Manage Environments
 
 ```bash
-devstack stop myproject
-```
+# Start an environment
+chimera start myproject
 
-Use these commands to quickly spin up and tear down your Docker environments.
+# Stop an environment
+chimera stop myproject
+```
 
 ---
 
 ## Project Structure
 
-When you create a new project (e.g., `myproject`), DevStack Factory generates a structured directory layout:
+When you create a new project (e.g., `myproject`), ChimeraStack generates a structured directory layout:
 
 ```
 myproject/
@@ -130,27 +136,28 @@ myproject/
 └── .env
 ```
 
-- **docker/**: Contains Docker configurations for your web server, language runtime, and database.
-- **config/**: Holds environment-specific settings for development, testing, and production.
-- **docker-compose.yml**: Orchestrates all containers in your stack.
-- **.env**: Stores environment variables used by `docker-compose` and your application.
+- **docker/**: Contains service-specific Docker configurations
+- **config/**: Holds environment-specific settings
+- **docker-compose.yml**: Orchestrates your development stack
+- **.env**: Stores environment variables
 
 ---
 
 ## Configuration
 
-DevStack Factory includes default, secure, and optimized configurations for each environment. You can customize these to fit your needs:
+ChimeraStack includes secure, optimized configurations for each environment that you can customize:
 
-- **Docker Compose**: Update service orchestration, port mappings, and resource allocations.
-- **Web Server Configs**: Modify your Nginx or Apache settings to adapt for advanced use cases.
-- **Database Settings**: Tweak performance and security settings for MySQL, PostgreSQL, or MariaDB.
-- **Environment Variables**: Manage secrets and sensitive information using the `.env` file.
+- **Docker Compose**: Service orchestration and resource allocation
+- **Web Server Configs**: Optimized Nginx or Apache settings
+- **Database Settings**: Performance-tuned database configurations
+- **Environment Variables**: Secure secrets management
+- **Port Management**: Dynamic port allocation to prevent conflicts
 
 ---
 
 ## Development
 
-If you’re interested in contributing to DevStack Factory or modifying it locally:
+To contribute to ChimeraStack:
 
 1. **Create a virtual environment**:
    ```bash
@@ -172,16 +179,16 @@ Feel free to submit pull requests with improvements or new features.
 
 ## License
 
-DevStack Factory is released under the [MIT License](LICENSE). You are free to use, modify, and distribute this software as permitted by the license.
+ChimeraStack is released under the [MIT License](LICENSE).
 
 ---
 
 ## Author
 
-**Created by:** [Jaouad Bouddehbine](https://github.com/yourusername)
+**Created by:** [Jaouad Bouddehbine](https://github.com/Amirofcodes)
 
-For bug reports and feature requests, please [open an issue](https://github.com/Amirofcodes/devstack-factory/issues).
+For bug reports and feature requests, please [open an issue](https://github.com/Amirofcodes/chimera-stack/issues).
 
 ---
 
-Feel free to reach out or submit a pull request if you have questions or suggestions. Thank you for using DevStack Factory!
+Feel free to reach out or submit a pull request if you have questions or suggestions. Thank you for using ChimeraStack!

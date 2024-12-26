@@ -136,7 +136,7 @@ http {
 
     def _create_app_config(self, config_path: Path) -> None:
         """Create application-specific server configuration."""
-        app_config = """
+        app_config = r"""
 server {
     listen 80;
     server_name localhost;

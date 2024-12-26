@@ -1,5 +1,8 @@
 """
 Command Line Interface Module
+
+Provides the main CLI functionality for ChimeraStack, including project creation,
+management, and tool information.
 """
 
 import click
@@ -11,9 +14,27 @@ from chimera_stack.core.environment import Environment
 from chimera_stack.core.docker_manager import DockerManager
 from chimera_stack.core.setup_wizard import SetupWizard
 
-@click.group()
+# Tool information
+AUTHOR = "Jaouad Bouddehbine (Amirofcodes)"
+REPOSITORY = "https://github.com/Amirofcodes/chimera-stack"
+VERSION = "0.1.0"
+
+def print_version(ctx, param, value):
+    """Print version information callback."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(f"ChimeraStack v{VERSION}")
+    click.echo(f"Author: {AUTHOR}")
+    click.echo(f"Repository: {REPOSITORY}")
+    ctx.exit()
+
+@click.group(help="ChimeraStack - A Docker-centric Development Environment Management Tool\n\n"
+                  "Created by Jaouad Bouddehbine (Amirofcodes)\n"
+                  "Repository: https://github.com/Amirofcodes/chimera-stack")
+@click.option('--version', is_flag=True, callback=print_version, expose_value=False,
+              is_eager=True, help="Show the version and exit.")
 def cli():
-    """ChimeraStack - Development Environment Management Tool"""
+    """ChimeraStack CLI entry point."""
     pass
 
 @cli.command()
@@ -52,9 +73,64 @@ def init():
 def create(project_name: str, language: str, framework: str,
           webserver: str, database: str, env: str):
     """Create a new development environment using specified options."""
-    create_project(project_name=project_name, language=language, 
-                  framework=framework, webserver=webserver, 
+    create_project(project_name=project_name, language=language,
+                  framework=framework, webserver=webserver,
                   database=database, env=env)
+
+@cli.command()
+@click.argument('project_name')
+def start(project_name: str):
+    """Start an existing development environment."""
+    try:
+        project_path = Path.cwd() / project_name
+        if not project_path.exists():
+            raise click.ClickException(f"Project {project_name} not found")
+
+        click.echo(f"Starting {project_name} environment...")
+        docker_manager = DockerManager(project_name, project_path)
+        if docker_manager.start_environment():
+            click.echo(f"✨ Environment {project_name} started successfully!")
+        else:
+            raise click.ClickException("Failed to start environment")
+
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+@cli.command()
+@click.argument('project_name')
+def stop(project_name: str):
+    """Stop a running development environment."""
+    try:
+        project_path = Path.cwd() / project_name
+        if not project_path.exists():
+            raise click.ClickException(f"Project {project_name} not found")
+
+        click.echo(f"Stopping {project_name} environment...")
+        docker_manager = DockerManager(project_name, project_path)
+        if docker_manager.stop_environment():
+            click.echo(f"✨ Environment {project_name} stopped successfully!")
+        else:
+            raise click.ClickException("Failed to stop environment")
+
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+@cli.command()
+def info():
+    """Display information about ChimeraStack."""
+    click.echo("\nChimeraStack - Docker Development Environment Tool")
+    click.echo("=" * 50)
+    click.echo(f"Version: {VERSION}")
+    click.echo(f"Author: {AUTHOR}")
+    click.echo(f"Repository: {REPOSITORY}")
+    click.echo("\nSupported Languages:")
+    click.echo("  - PHP (Laravel, Symfony, Vanilla)")
+    click.echo("  - Python (Django, Flask, Vanilla)")
+    click.echo("\nSupported Services:")
+    click.echo("  - Web Servers: Nginx, Apache")
+    click.echo("  - Databases: MySQL, PostgreSQL, MariaDB")
+    click.echo("  - Additional: Redis, Logging, Monitoring")
+    click.echo("\nFor more information, visit the repository.")
 
 def create_project(project_name: str, language: str, framework: str,
                   webserver: str, database: str, env: str):
@@ -120,36 +196,6 @@ def create_project(project_name: str, language: str, framework: str,
     except Exception as e:
         if 'environment' in locals():
             environment.cleanup()
-        raise click.ClickException(str(e))
-
-@cli.command()
-@click.argument('project_name')
-def start(project_name: str):
-    """Start an existing development environment."""
-    try:
-        project_path = Path.cwd() / project_name
-        if not project_path.exists():
-            raise click.ClickException(f"Project {project_name} not found")
-
-        click.echo(f"Starting {project_name} environment...")
-        # Implement Docker Compose up
-
-    except Exception as e:
-        raise click.ClickException(str(e))
-
-@cli.command()
-@click.argument('project_name')
-def stop(project_name: str):
-    """Stop a running development environment."""
-    try:
-        project_path = Path.cwd() / project_name
-        if not project_path.exists():
-            raise click.ClickException(f"Project {project_name} not found")
-
-        click.echo(f"Stopping {project_name} environment...")
-        # Implement Docker Compose down
-
-    except Exception as e:
         raise click.ClickException(str(e))
 
 if __name__ == '__main__':

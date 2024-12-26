@@ -75,7 +75,7 @@ class BaseWebServer(ABC):
 
     def _get_php_location(self) -> str:
         """Generate PHP location configuration."""
-        return """
+        return r"""
     location ~ \.php$ {
         fastcgi_pass php:9000;
         fastcgi_index index.php;

@@ -1,5 +1,3 @@
-# src/services/databases/base.py
-
 """
 Base Database Service Implementation
 
@@ -35,13 +33,29 @@ class BaseDatabase(ABC):
         """Return required environment variables for the database service."""
         pass
 
-    def generate_connection_string(self) -> str:
-        """Generate a connection string for the database."""
-        pass
+    def get_volume_name(self, service_name: str = None) -> str:
+        """Generate a consistent volume name for the database.
+        
+        Args:
+            service_name: Optional service identifier. If not provided, uses the database type.
+        
+        Returns:
+            str: Consistent volume name for the service
+        """
+        if not service_name:
+            service_name = self.__class__.__name__.lower().replace('service', '')
+        return f"{service_name}_data"
 
-    def get_data_volume_config(self) -> Dict[str, Any]:
-        """Generate volume configuration for persistent data storage."""
-        volume_name = f"{self.project_name}_db_data"
+    def get_data_volume_config(self, volume_name: Optional[str] = None) -> Dict[str, Any]:
+        """Generate volume configuration for persistent data storage.
+        
+        Args:
+            volume_name: Optional volume name override.
+        
+        Returns:
+            Dict[str, Any]: Volume configuration dictionary
+        """
+        volume_name = volume_name or self.get_volume_name()
         return {
             'volumes': {
                 volume_name: {
@@ -49,6 +63,10 @@ class BaseDatabase(ABC):
                 }
             }
         }
+
+    def generate_connection_string(self) -> str:
+        """Generate a connection string for the database."""
+        pass
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for the database service."""

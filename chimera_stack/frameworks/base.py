@@ -16,7 +16,7 @@ class BaseFramework(ABC):
     def __init__(self, project_name: str, base_path: Path):
         """
         Initialize the framework.
-        
+
         Args:
             project_name: Name of the project
             base_path: Root path of the project
@@ -32,7 +32,7 @@ class BaseFramework(ABC):
     def initialize_project(self) -> bool:
         """
         Initialize a new project with the framework.
-        
+
         Returns:
             bool: True if initialization was successful
         """
@@ -42,7 +42,7 @@ class BaseFramework(ABC):
     def configure_docker(self) -> Dict[str, Any]:
         """
         Generate Docker configuration for the framework.
-        
+
         Returns:
             Dict[str, Any]: Docker configuration dictionary
         """
@@ -52,7 +52,7 @@ class BaseFramework(ABC):
     def get_default_ports(self) -> Dict[str, int]:
         """
         Return default ports used by the framework.
-        
+
         Returns:
             Dict[str, int]: Dictionary of service names to port numbers
         """
@@ -62,32 +62,34 @@ class BaseFramework(ABC):
     def setup_development_environment(self) -> bool:
         """
         Set up development environment for the framework.
-        
+
         Returns:
             bool: True if setup was successful
         """
         pass
 
-    def ensure_directories(self) -> bool:
+    def create_directory(self, path: Path) -> bool:
         """
-        Ensure all required directories exist.
-        
+        Safely create a directory only if it will be used.
+
+        Args:
+            path: Path to create
+
         Returns:
-            bool: True if all directories were created successfully
+            bool: True if directory was created or already exists
         """
         try:
-            self.src_path.mkdir(exist_ok=True, parents=True)
-            self.docker_path.mkdir(exist_ok=True, parents=True)
-            self.config_path.mkdir(exist_ok=True, parents=True)
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
             return True
         except Exception as e:
-            print(f"Error creating framework directories: {e}")
+            print(f"Error creating directory {path}: {e}")
             return False
 
     def get_project_root(self) -> Path:
         """
         Get the project's root directory.
-        
+
         Returns:
             Path: Project root directory
         """
@@ -96,7 +98,7 @@ class BaseFramework(ABC):
     def get_source_path(self) -> Path:
         """
         Get the project's source directory.
-        
+
         Returns:
             Path: Project source directory
         """

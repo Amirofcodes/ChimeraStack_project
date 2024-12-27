@@ -8,7 +8,7 @@ implementations.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 
 class BaseWebServer(ABC):
     """Abstract base class for web server implementations."""
@@ -18,8 +18,6 @@ class BaseWebServer(ABC):
         self.base_path = base_path
         self.config: Dict[str, Any] = {}
         self.ssl_enabled = False
-        self.ssl_certificate: Optional[str] = None
-        self.ssl_key: Optional[str] = None
         self._allocated_ports: List[int] = []
 
     @abstractmethod
@@ -28,22 +26,19 @@ class BaseWebServer(ABC):
         pass
 
     @abstractmethod
-    def generate_server_config(self) -> None:
+    def generate_server_config(self) -> bool:
         """Generate server-specific configuration files."""
         pass
 
-    def enable_ssl(self, certificate_path: str, key_path: str) -> None:
-        """Enable SSL/TLS support for the web server."""
-        self.ssl_enabled = True
-        self.ssl_certificate = certificate_path
-        self.ssl_key = key_path
-
-    def get_default_ports(self) -> Dict[str, int]:
-        """Return default ports for the web server."""
-        return {
-            'http': 8000,
-            'https': 8443
-        }
+    def create_directory(self, path: Path) -> bool:
+        """Create a directory if it doesn't exist."""
+        try:
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
+            return True
+        except Exception as e:
+            print(f"Error creating directory {path}: {e}")
+            return False
 
     def _get_available_port(self, start_port: int, end_port: int) -> int:
         """Find an available port in the specified range."""
@@ -70,19 +65,4 @@ class BaseWebServer(ABC):
 
     def _uses_php(self) -> bool:
         """Determine if the project uses PHP."""
-        # This should be implemented by child classes or moved to a project config
-        return True
-
-    def _get_php_location(self) -> str:
-        """Generate PHP location configuration."""
-        return r"""
-    location ~ \.php$ {
-        fastcgi_pass php:9000;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_intercept_errors on;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 4 16k;
-    }
-"""
+        return False

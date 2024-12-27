@@ -1,3 +1,181 @@
+# .gitignore
+
+```
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# UV
+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#uv.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
+.pdm.toml
+.pdm-python
+.pdm-build/
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+#.idea/
+
+# PyPI configuration file
+.pypirc
+
+
+```
+
 # chimera_stack/**init**.py
 
 ```py
@@ -23,6 +201,9 @@ __all__ = ['Environment', 'ConfigurationManager', 'DockerManager', 'cli']
 ```py
 """
 Command Line Interface Module
+
+Provides the main CLI functionality for ChimeraStack, including project creation,
+management, and tool information.
 """
 
 import click
@@ -34,9 +215,27 @@ from chimera_stack.core.environment import Environment
 from chimera_stack.core.docker_manager import DockerManager
 from chimera_stack.core.setup_wizard import SetupWizard
 
-@click.group()
+# Tool information
+AUTHOR = "Jaouad Bouddehbine (Amirofcodes)"
+REPOSITORY = "https://github.com/Amirofcodes/chimera-stack"
+VERSION = "0.1.0"
+
+def print_version(ctx, param, value):
+    """Print version information callback."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(f"ChimeraStack v{VERSION}")
+    click.echo(f"Author: {AUTHOR}")
+    click.echo(f"Repository: {REPOSITORY}")
+    ctx.exit()
+
+@click.group(help="ChimeraStack - A Docker-centric Development Environment Management Tool\n\n"
+                  "Created by Jaouad Bouddehbine (Amirofcodes)\n"
+                  "Repository: https://github.com/Amirofcodes/chimera-stack")
+@click.option('--version', is_flag=True, callback=print_version, expose_value=False,
+              is_eager=True, help="Show the version and exit.")
 def cli():
-    """ChimeraStack - Development Environment Management Tool"""
+    """ChimeraStack CLI entry point."""
     pass
 
 @cli.command()
@@ -78,6 +277,61 @@ def create(project_name: str, language: str, framework: str,
     create_project(project_name=project_name, language=language,
                   framework=framework, webserver=webserver,
                   database=database, env=env)
+
+@cli.command()
+@click.argument('project_name')
+def start(project_name: str):
+    """Start an existing development environment."""
+    try:
+        project_path = Path.cwd() / project_name
+        if not project_path.exists():
+            raise click.ClickException(f"Project {project_name} not found")
+
+        click.echo(f"Starting {project_name} environment...")
+        docker_manager = DockerManager(project_name, project_path)
+        if docker_manager.start_environment():
+            click.echo(f"✨ Environment {project_name} started successfully!")
+        else:
+            raise click.ClickException("Failed to start environment")
+
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+@cli.command()
+@click.argument('project_name')
+def stop(project_name: str):
+    """Stop a running development environment."""
+    try:
+        project_path = Path.cwd() / project_name
+        if not project_path.exists():
+            raise click.ClickException(f"Project {project_name} not found")
+
+        click.echo(f"Stopping {project_name} environment...")
+        docker_manager = DockerManager(project_name, project_path)
+        if docker_manager.stop_environment():
+            click.echo(f"✨ Environment {project_name} stopped successfully!")
+        else:
+            raise click.ClickException("Failed to stop environment")
+
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+@cli.command()
+def info():
+    """Display information about ChimeraStack."""
+    click.echo("\nChimeraStack - Docker Development Environment Tool")
+    click.echo("=" * 50)
+    click.echo(f"Version: {VERSION}")
+    click.echo(f"Author: {AUTHOR}")
+    click.echo(f"Repository: {REPOSITORY}")
+    click.echo("\nSupported Languages:")
+    click.echo("  - PHP (Laravel, Symfony, Vanilla)")
+    click.echo("  - Python (Django, Flask, Vanilla)")
+    click.echo("\nSupported Services:")
+    click.echo("  - Web Servers: Nginx, Apache")
+    click.echo("  - Databases: MySQL, PostgreSQL, MariaDB")
+    click.echo("  - Additional: Redis, Logging, Monitoring")
+    click.echo("\nFor more information, visit the repository.")
 
 def create_project(project_name: str, language: str, framework: str,
                   webserver: str, database: str, env: str):
@@ -143,36 +397,6 @@ def create_project(project_name: str, language: str, framework: str,
     except Exception as e:
         if 'environment' in locals():
             environment.cleanup()
-        raise click.ClickException(str(e))
-
-@cli.command()
-@click.argument('project_name')
-def start(project_name: str):
-    """Start an existing development environment."""
-    try:
-        project_path = Path.cwd() / project_name
-        if not project_path.exists():
-            raise click.ClickException(f"Project {project_name} not found")
-
-        click.echo(f"Starting {project_name} environment...")
-        # Implement Docker Compose up
-
-    except Exception as e:
-        raise click.ClickException(str(e))
-
-@cli.command()
-@click.argument('project_name')
-def stop(project_name: str):
-    """Stop a running development environment."""
-    try:
-        project_path = Path.cwd() / project_name
-        if not project_path.exists():
-            raise click.ClickException(f"Project {project_name} not found")
-
-        click.echo(f"Stopping {project_name} environment...")
-        # Implement Docker Compose down
-
-    except Exception as e:
         raise click.ClickException(str(e))
 
 if __name__ == '__main__':
@@ -267,8 +491,8 @@ class ConfigurationManager:
             'DB_CONNECTION': 'mysql',
             'DB_HOST': 'mysql',
             'DB_PORT': '3306',
-            'DB_DATABASE': 'devstack',
-            'DB_USERNAME': 'devstack',
+            'DB_DATABASE': self.project_name,
+            'DB_USERNAME': self.project_name,
             'DB_PASSWORD': 'secret',
             'DB_ROOT_PASSWORD': 'rootsecret'
         }
@@ -298,6 +522,9 @@ class ConfigurationManager:
             # Initialize service configurations
             self._initialize_services(language, framework, webserver, database)
 
+            # Normalize and merge volume configurations
+            self._normalize_volume_config()
+
             # Save configurations
             self._save_docker_compose()
             self._save_environment_file()
@@ -307,6 +534,26 @@ class ConfigurationManager:
         except Exception as e:
             print(f"Error initializing config: {e}")
             return False
+
+    def _normalize_volume_config(self) -> None:
+        """Normalize volume configurations to prevent duplicates and ensure consistency."""
+        if 'volumes' not in self.config:
+            self.config['volumes'] = {}
+
+        # Collect all volume definitions
+        normalized_volumes = {}
+        for service in self.config.get('services', {}).values():
+            if isinstance(service, dict) and 'volumes' in service:
+                # Extract volume names from volume mappings
+                for volume_mapping in service['volumes']:
+                    if ':' in volume_mapping:
+                        volume_name = volume_mapping.split(':')[0]
+                        if volume_name.startswith('./') or volume_name.startswith('/'):
+                            continue  # Skip bind mounts
+                        normalized_volumes[volume_name] = {'driver': 'local'}
+
+        # Update the main volumes configuration
+        self.config['volumes'] = normalized_volumes
 
     def _initialize_services(self, language: str, framework: str,
                            webserver: str, database: str) -> None:
@@ -621,13 +868,6 @@ class Environment:
         self.path = path or self._get_safe_project_path()
         self.config: Dict = {}
 
-        # Define standard directory structure
-        self.dirs = {
-            'docker': self.path / 'docker',
-            'config': self.path / 'config',
-            'src': self.path / 'src'
-        }
-
     def _get_safe_project_path(self) -> Path:
         """
         Get a safe path for project creation that avoids the tool's directory.
@@ -652,26 +892,51 @@ class Environment:
         """
         tool_indicators = [
             'pyproject.toml',
-            'devstack_factory',
+            'chimera_stack',
             'setup.py',
             'setup.cfg'
         ]
         return any((path / indicator).exists() for indicator in tool_indicators)
 
+    def create_directory(self, path: Path) -> bool:
+        """
+        Safely create a directory only if needed.
+
+        Args:
+            path: Path to create
+
+        Returns:
+            bool: True if directory was created successfully
+        """
+        try:
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
+            return True
+        except Exception as e:
+            print(f"Error creating directory {path}: {e}")
+            return False
+
     def setup(self) -> bool:
         """
-        Initialize the development environment with proper directory structure.
+        Initialize the development environment with minimal directory structure.
 
         Returns:
             bool: True if setup was successful
         """
         try:
-            # Create main project directory if it doesn't exist
-            self.path.mkdir(exist_ok=True, parents=True)
+            # Create only the essential base directory
+            self.create_directory(self.path)
 
-            # Create standard directory structure
-            for dir_path in self.dirs.values():
-                dir_path.mkdir(exist_ok=True, parents=True)
+            # Create only the mandatory directories
+            essential_dirs = [
+                self.path / 'config',  # Required for environment configurations
+                self.path / 'docker',  # Base directory for Docker configurations
+                self.path / 'src',     # Source code directory
+                self.path / 'public'   # Public web directory
+            ]
+
+            for directory in essential_dirs:
+                self.create_directory(directory)
 
             # Create initial configuration files
             self._create_initial_files()
@@ -702,8 +967,8 @@ class Environment:
 .env
 *.env
 
-# Docker
-.docker/
+# Dependencies
+/vendor/
 
 # IDE files
 .idea/
@@ -721,9 +986,12 @@ Thumbs.db
         duplicate_dir = self.path / self.name
         if duplicate_dir.exists():
             if duplicate_dir.is_dir():
-                # If there are important files in the duplicate directory, move them up
-                self._migrate_important_files(duplicate_dir)
-                shutil.rmtree(duplicate_dir)
+                try:
+                    # If there are important files in the duplicate directory, move them up
+                    self._migrate_important_files(duplicate_dir)
+                    shutil.rmtree(duplicate_dir)
+                except Exception as e:
+                    print(f"Warning: Error cleaning up duplicate directory: {e}")
 
     def _migrate_important_files(self, duplicate_dir: Path) -> None:
         """
@@ -1062,20 +1330,22 @@ class BaseFramework(ABC):
         """
         pass
 
-    def ensure_directories(self) -> bool:
+    def create_directory(self, path: Path) -> bool:
         """
-        Ensure all required directories exist.
+        Safely create a directory only if it will be used.
+
+        Args:
+            path: Path to create
 
         Returns:
-            bool: True if all directories were created successfully
+            bool: True if directory was created or already exists
         """
         try:
-            self.src_path.mkdir(exist_ok=True, parents=True)
-            self.docker_path.mkdir(exist_ok=True, parents=True)
-            self.config_path.mkdir(exist_ok=True, parents=True)
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
             return True
         except Exception as e:
-            print(f"Error creating framework directories: {e}")
+            print(f"Error creating directory {path}: {e}")
             return False
 
     def get_project_root(self) -> Path:
@@ -1669,16 +1939,36 @@ class VanillaPHPFramework(BasePHPFramework):
     def initialize_project(self) -> bool:
         """Initialize a minimal PHP project structure."""
         try:
-            # Create essential directories
+            # Create only directories we will actually use
             public_path = self.base_path / 'public'
             src_path = self.base_path / 'src'
             pages_path = src_path / 'pages'
 
-            for path in [public_path, src_path, pages_path]:
-                path.mkdir(exist_ok=True, parents=True)
+            # Create directories only when we're about to use them
+            self.create_directory(public_path)  # For index.php
+            self.create_directory(pages_path)   # For home.php
 
-            # Create index.php
-            index_content = '''<?php
+            # Docker service directories will be created by their respective services
+
+            # Create project files
+            self._create_index_file(public_path)
+            self._create_bootstrap_file(src_path)
+            self._create_home_file(pages_path)
+            self._create_env_file(self.base_path)
+            self._create_gitignore(self.base_path)
+
+            return True
+        except Exception as e:
+            print(f"Error initializing vanilla PHP project: {e}")
+            return False
+
+    def create_directory(self, path: Path) -> None:
+        """Create a directory if it doesn't exist."""
+        path.mkdir(exist_ok=True, parents=True)
+
+    def _create_index_file(self, path: Path) -> None:
+        """Create the main index.php file."""
+        content = '''<?php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
@@ -1698,12 +1988,12 @@ switch ($uri) {
         http_response_code(404);
         echo "404 Not Found";
         break;
-}
-'''
-            (public_path / 'index.php').write_text(index_content)
+}'''
+        (path / 'index.php').write_text(content)
 
-            # Create bootstrap.php
-            bootstrap_content = '''<?php
+    def _create_bootstrap_file(self, path: Path) -> None:
+        """Create the bootstrap.php file."""
+        content = '''<?php
 declare(strict_types=1);
 
 // Error reporting for development
@@ -1727,15 +2017,15 @@ spl_autoload_register(function ($class) {
         return true;
     }
     return false;
-});
-'''
-            (src_path / 'bootstrap.php').write_text(bootstrap_content)
+});'''
+        (path / 'bootstrap.php').write_text(content)
 
-            # Create home.php
-            home_content = '''<?php
+    def _create_home_file(self, path: Path) -> None:
+        """Create the home.php file."""
+        content = '''<?php
 declare(strict_types=1);
 
-$title = 'Welcome to DevStack Factory';
+$title = 'Welcome to ChimeraStack';
 ?>
 
 <!DOCTYPE html>
@@ -1744,31 +2034,73 @@ $title = 'Welcome to DevStack Factory';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .status {
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
 <body>
     <h1><?= htmlspecialchars($title) ?></h1>
     <p>Your development environment is ready.</p>
     <p><a href="/info">View PHP Info</a></p>
+
+    <!-- Database Connection Test -->
+    <?php
+    try {
+        $dsn = "mysql:host={$_ENV['DB_HOST']};dbname={$_ENV['DB_DATABASE']}";
+        $pdo = new PDO($dsn, $_ENV['DB_USERNAME'], $_ENV['DB_PASSWORD']);
+        echo '<div class="status success">✓ Database connection successful!</div>';
+    } catch (PDOException $e) {
+        echo '<div class="status error">✗ Database connection failed: ' . htmlspecialchars($e->getMessage()) . '</div>';
+    }
+    ?>
 </body>
-</html>
-'''
-            (pages_path / 'home.php').write_text(home_content)
+</html>'''
+        (path / 'home.php').write_text(content)
 
-            return True
+    def _create_env_file(self, path: Path) -> None:
+        """Create the .env file with default values."""
+        content = f'''# PHP Configuration
+PHP_DISPLAY_ERRORS=1
+PHP_ERROR_REPORTING=E_ALL
+PHP_MEMORY_LIMIT=256M
+PHP_MAX_EXECUTION_TIME=30
+PHP_POST_MAX_SIZE=100M
+PHP_UPLOAD_MAX_FILESIZE=100M
 
-        except Exception as e:
-            print(f"Error initializing vanilla PHP project: {e}")
-            return False
+# Database Configuration
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE={self.project_name}
+DB_USERNAME={self.project_name}
+DB_PASSWORD=secret
+DB_ROOT_PASSWORD=rootsecret'''
+        (path / '.env').write_text(content)
 
-    def setup_development_environment(self) -> bool:
-        """Set up development environment configurations."""
-        try:
-            # Create docker configurations
-            self._create_docker_configs()
-
-            # Create .gitignore
-            gitignore_content = """
-# Environment files
+    def _create_gitignore(self, path: Path) -> None:
+        """Create .gitignore file."""
+        content = '''# Environment files
 .env
 *.env
 
@@ -1782,123 +2114,117 @@ $title = 'Welcome to DevStack Factory';
 
 # OS files
 .DS_Store
-Thumbs.db
-"""
-            (self.base_path / '.gitignore').write_text(gitignore_content.strip())
+Thumbs.db'''
+        (path / '.gitignore').write_text(content)
+
+    def setup_development_environment(self) -> bool:
+        """Set up development environment configurations."""
+        try:
+            # Generate Docker configurations
+            docker_path = self.base_path / 'docker'
+            php_path = docker_path / 'php'
+            self.create_directory(php_path)
+
+            # Create necessary Docker configurations
+            self._create_php_dockerfile(php_path)
+            self._create_php_config(php_path)
+            self._create_php_fpm_config(php_path)
 
             return True
         except Exception as e:
             print(f"Error setting up development environment: {e}")
             return False
 
+    def _create_php_fpm_config(self, path: Path) -> None:
+        """Create PHP-FPM pool configuration."""
+        www_conf = """[global]
+error_log = /var/log/php-fpm/error.log
+log_level = notice
+
+[www]
+user = www-data
+group = www-data
+
+listen = 9000
+listen.owner = www-data
+listen.group = www-data
+listen.mode = 0660
+
+pm = dynamic
+pm.max_children = 10
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+
+php_admin_value[error_log] = /var/log/php-fpm/www-error.log
+php_admin_flag[log_errors] = on
+
+catch_workers_output = yes
+decorate_workers_output = yes
+
+env[DB_HOST] = $DB_HOST
+env[DB_DATABASE] = $DB_DATABASE
+env[DB_USERNAME] = $DB_USERNAME
+env[DB_PASSWORD] = $DB_PASSWORD
+
+security.limit_extensions = .php"""
+        (path / 'www.conf').write_text(www_conf)
+
     def _create_php_dockerfile(self, path: Path) -> None:
-        """Generate enhanced PHP Dockerfile with proper extension installation."""
+        """Generate PHP Dockerfile."""
         path.mkdir(exist_ok=True, parents=True)
-
-        # Prepare system packages installation command
-        system_packages = ' '.join(self.docker_requirements['php']['system_packages'])
-
-        # Prepare PHP extensions installation commands
-        extension_commands = []
-        for ext, config in self.docker_requirements['php']['extensions'].items():
-            if config and config.get('configure'):
-                extension_commands.append(f'docker-php-ext-configure {ext}')
-            extension_commands.append(f'docker-php-ext-install {ext}')
-
-        extensions_installation = ' && \\\n    '.join(extension_commands)
-
-        dockerfile_content = f"""FROM {self.docker_requirements['php']['image']}
+        content = f'''FROM {self.docker_requirements['php']['image']}
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \\
-    {system_packages} \\
+    {" ".join(self.docker_requirements['php']['system_packages'])} \\
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN {extensions_installation}
+RUN docker-php-ext-install pdo pdo_mysql mbstring zip exif \\
+    && docker-php-ext-configure gd \\
+    && docker-php-ext-install gd
 
 # Configure PHP
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
+
+# Create log directory
+RUN mkdir -p /var/log/php-fpm \\
+    && chown -R www-data:www-data /var/log/php-fpm
+
+# Set proper permissions
+RUN usermod -u 1000 www-data \\
+    && groupmod -g 1000 www-data
 
 WORKDIR /var/www/html
-"""
-        (path / 'Dockerfile').write_text(dockerfile_content.strip())
 
-    def _create_docker_configs(self) -> None:
-        """Create necessary Docker configuration files."""
-        docker_path = self.base_path / 'docker'
-        docker_path.mkdir(exist_ok=True)
-
-        self._create_php_dockerfile(docker_path / 'php')
-        self._create_php_config(docker_path / 'php')
-
-    def configure_docker(self) -> Dict[str, Any]:
-        """Generate Docker configuration for vanilla PHP development."""
-        config = {
-            'services': {
-                'php': {
-                    'build': {
-                        'context': '.',
-                        'dockerfile': 'docker/php/Dockerfile'
-                    },
-                    'volumes': [
-                        '.:/var/www/html:cached'
-                    ],
-                    'environment': {
-                        'PHP_DISPLAY_ERRORS': '${PHP_DISPLAY_ERRORS}',
-                        'PHP_ERROR_REPORTING': '${PHP_ERROR_REPORTING}',
-                        'PHP_MEMORY_LIMIT': '${PHP_MEMORY_LIMIT}',
-                        'PHP_MAX_EXECUTION_TIME': '${PHP_MAX_EXECUTION_TIME}',
-                        'PHP_POST_MAX_SIZE': '${PHP_POST_MAX_SIZE}',
-                        'PHP_UPLOAD_MAX_FILESIZE': '${PHP_UPLOAD_MAX_FILESIZE}'
-                    },
-                    'networks': ['app_network']
-                },
-                'nginx': {
-                    'image': 'nginx:alpine',
-                    'ports': [f"{self.get_default_ports()['web']}:80"],
-                    'volumes': [
-                        '.:/var/www/html:cached',
-                        './docker/nginx/conf.d:/etc/nginx/conf.d:ro'
-                    ],
-                    'depends_on': ['php'],
-                    'networks': ['app_network']
-                }
-            }
-        }
-
-        if self._uses_database():
-            config['services']['mysql'] = {
-                'image': 'mysql:8.0',
-                'environment': {
-                    'MYSQL_DATABASE': '${DB_DATABASE}',
-                    'MYSQL_USER': '${DB_USERNAME}',
-                    'MYSQL_PASSWORD': '${DB_PASSWORD}',
-                    'MYSQL_ROOT_PASSWORD': '${DB_ROOT_PASSWORD}'
-                },
-                'ports': [f"{self.get_default_ports()['database']}:3306"],
-                'volumes': ['mysql_data:/var/lib/mysql'],
-                'networks': ['app_network']
-            }
-            config['volumes'] = {
-                'mysql_data': {
-                    'driver': 'local'
-                }
-            }
-
-        return config
+USER www-data'''
+        (path / 'Dockerfile').write_text(content)
 
     def _create_php_config(self, path: Path) -> None:
         """Generate PHP configuration."""
         path.mkdir(exist_ok=True, parents=True)
-        php_config = """
-[PHP]
+        content = '''[PHP]
+; Error handling and logging
 display_errors = ${PHP_DISPLAY_ERRORS}
+display_startup_errors = ${PHP_DISPLAY_ERRORS}
 error_reporting = ${PHP_ERROR_REPORTING}
+log_errors = On
+error_log = /var/log/php-fpm/php_errors.log
+log_errors_max_len = 1024
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+report_memleaks = On
+track_errors = On
+
+; Resource limits
 memory_limit = ${PHP_MEMORY_LIMIT}
 max_execution_time = ${PHP_MAX_EXECUTION_TIME}
 post_max_size = ${PHP_POST_MAX_SIZE}
 upload_max_filesize = ${PHP_UPLOAD_MAX_FILESIZE}
+max_file_uploads = 20
 
 [Date]
 date.timezone = UTC
@@ -1907,27 +2233,226 @@ date.timezone = UTC
 session.save_handler = files
 session.save_path = /tmp
 session.gc_maxlifetime = 1800
+session.gc_probability = 1
+session.gc_divisor = 100
 
 [opcache]
-opcache.enable=1
-opcache.memory_consumption=128
-opcache.interned_strings_buffer=8
-opcache.max_accelerated_files=4000
-opcache.validate_timestamps=1
-opcache.revalidate_freq=60
-"""
-        (path / 'php.ini').write_text(php_config.strip())
+opcache.enable = 1
+opcache.memory_consumption = 128
+opcache.interned_strings_buffer = 8
+opcache.max_accelerated_files = 4000
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 0
+opcache.fast_shutdown = 1
 
-    def _uses_database(self) -> bool:
-        """Determine if the project uses a database."""
-        return True  # For now, always return True
+[mysqlnd]
+mysqlnd.collect_statistics = On
+mysqlnd.collect_memory_statistics = On'''
+        (path / 'php.ini').write_text(content)
+
+    def _create_nginx_config(self, path: Path) -> None:
+        """Create Nginx configuration."""
+        conf_d_path = path / 'conf.d'
+        conf_d_path.mkdir(exist_ok=True, parents=True)
+
+        content = r'''server {
+    listen 80;
+    server_name localhost;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options "nosniff";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+    # Health check endpoint
+    location /ping {
+        access_log off;
+        return 200 'healthy\n';
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+
+        fastcgi_intercept_errors on;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+    }
+
+    location ~ /\.(?!well-known) {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Optimization for static files
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        access_log off;
+        add_header Cache-Control "public";
+    }
+}'''
+        (conf_d_path / 'default.conf').write_text(content)
 
     def get_default_ports(self) -> Dict[str, int]:
-        """Return default ports for PHP development."""
+        """Return default ports for vanilla PHP development."""
         return {
             'web': 8080,
             'database': 3306
         }
+
+    def get_service_volumes(self) -> Dict[str, Any]:
+        """Get standardized volume configuration for all services."""
+        return {
+            'mysql_data': {
+                'driver': 'local',
+                'name': f"{self.project_name}_mysql_data"
+            },
+            'php_logs': {
+                'driver': 'local',
+                'name': f"{self.project_name}_php_logs"
+            }
+        }
+
+    def get_service_networks(self) -> Dict[str, Any]:
+        """Get standardized network configuration."""
+        return {
+            'app_network': {
+                'driver': 'bridge',
+                'name': f"{self.project_name}_network"
+            }
+        }
+
+    def get_php_service_config(self) -> Dict[str, Any]:
+        """Get standardized PHP service configuration."""
+        return {
+            'build': {
+                'context': '.',
+                'dockerfile': 'docker/php/Dockerfile'
+            },
+            'volumes': [
+                '.:/var/www/html:cached',
+                'php_logs:/var/log/php-fpm'
+            ],
+            'environment': {
+                'PHP_DISPLAY_ERRORS': '${PHP_DISPLAY_ERRORS}',
+                'PHP_ERROR_REPORTING': '${PHP_ERROR_REPORTING}',
+                'PHP_MEMORY_LIMIT': '${PHP_MEMORY_LIMIT}',
+                'PHP_MAX_EXECUTION_TIME': '${PHP_MAX_EXECUTION_TIME}',
+                'PHP_POST_MAX_SIZE': '${PHP_POST_MAX_SIZE}',
+                'PHP_UPLOAD_MAX_FILESIZE': '${PHP_UPLOAD_MAX_FILESIZE}'
+            },
+            'networks': ['app_network'],
+            'healthcheck': {
+                'test': ["CMD", "php-fpm", "-t"],
+                'interval': '10s',
+                'timeout': '5s',
+                'retries': 3
+            }
+        }
+
+    def get_nginx_service_config(self) -> Dict[str, Any]:
+        """Get standardized Nginx service configuration."""
+        return {
+            'image': 'nginx:alpine',
+            'ports': [f"{self.get_default_ports()['web']}:80"],
+            'volumes': [
+                '.:/var/www/html:cached',
+                './docker/nginx/conf.d:/etc/nginx/conf.d:ro'
+            ],
+            'depends_on': ['php'],
+            'networks': ['app_network'],
+            'healthcheck': {
+                'test': ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/ping"],
+                'interval': '10s',
+                'timeout': '5s',
+                'retries': 3
+            }
+        }
+
+    def get_mysql_service_config(self) -> Dict[str, Any]:
+        """Get standardized MySQL service configuration."""
+        return {
+            'image': 'mysql:8.0',
+            'environment': {
+                'MYSQL_DATABASE': '${DB_DATABASE}',
+                'MYSQL_USER': '${DB_USERNAME}',
+                'MYSQL_PASSWORD': '${DB_PASSWORD}',
+                'MYSQL_ROOT_PASSWORD': '${DB_ROOT_PASSWORD}'
+            },
+            'ports': [f"{self.get_default_ports()['database']}:3306"],
+            'volumes': ['mysql_data:/var/lib/mysql'],
+            'networks': ['app_network'],
+            'healthcheck': {
+                'test': ["CMD", "mysqladmin", "ping", "-h", "localhost"],
+                'interval': '10s',
+                'timeout': '5s',
+                'retries': 3
+            }
+        }
+
+    def configure_docker(self) -> Dict[str, Any]:
+        """Generate Docker configuration for vanilla PHP development."""
+        config = {
+            'services': {
+                'php': self.get_php_service_config(),
+                'nginx': self.get_nginx_service_config(),
+                'mysql': self.get_mysql_service_config()
+            },
+            'networks': self.get_service_networks(),
+            'volumes': self.get_service_volumes()
+        }
+        return config
+
+    def _create_bootstrap_file(self, path: Path) -> None:
+        """Create the bootstrap.php file."""
+        content = '''<?php
+declare(strict_types=1);
+
+// Error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
+// Load environment variables
+if (file_exists(__DIR__ . '/../.env')) {
+    $env = parse_ini_file(__DIR__ . '/../.env');
+    foreach ($env as $key => $value) {
+        $_ENV[$key] = $value;
+        putenv("$key=$value");
+    }
+}
+
+// PSR-4 style autoloader
+spl_autoload_register(function ($class) {
+    // Convert namespace separators to directory separators
+    $file = __DIR__ . DIRECTORY_SEPARATOR .
+            str_replace(['\\\\', '/'], DIRECTORY_SEPARATOR, $class) . '.php';
+
+    if (file_exists($file)) {
+        require_once $file;
+        return true;
+    }
+    return false;
+});
+
+// Register Composer autoloader if available
+$composerAutoloader = __DIR__ . '/../vendor/autoload.php';
+if (file_exists($composerAutoloader)) {
+    require_once $composerAutoloader;
+}'''
+        (path / 'bootstrap.php').write_text(content)
 ```
 
 # chimera_stack/frameworks/python/**init**.py
@@ -2602,8 +3127,6 @@ __all__ = ['MySQLService', 'PostgreSQLService', 'MariaDBService']
 # chimera_stack/services/databases/base.py
 
 ```py
-# src/services/databases/base.py
-
 """
 Base Database Service Implementation
 
@@ -2639,13 +3162,29 @@ class BaseDatabase(ABC):
         """Return required environment variables for the database service."""
         pass
 
-    def generate_connection_string(self) -> str:
-        """Generate a connection string for the database."""
-        pass
+    def get_volume_name(self, service_name: str = None) -> str:
+        """Generate a consistent volume name for the database.
 
-    def get_data_volume_config(self) -> Dict[str, Any]:
-        """Generate volume configuration for persistent data storage."""
-        volume_name = f"{self.project_name}_db_data"
+        Args:
+            service_name: Optional service identifier. If not provided, uses the database type.
+
+        Returns:
+            str: Consistent volume name for the service
+        """
+        if not service_name:
+            service_name = self.__class__.__name__.lower().replace('service', '')
+        return f"{service_name}_data"
+
+    def get_data_volume_config(self, volume_name: Optional[str] = None) -> Dict[str, Any]:
+        """Generate volume configuration for persistent data storage.
+
+        Args:
+            volume_name: Optional volume name override.
+
+        Returns:
+            Dict[str, Any]: Volume configuration dictionary
+        """
+        volume_name = volume_name or self.get_volume_name()
         return {
             'volumes': {
                 volume_name: {
@@ -2653,6 +3192,10 @@ class BaseDatabase(ABC):
                 }
             }
         }
+
+    def generate_connection_string(self) -> str:
+        """Generate a connection string for the database."""
+        pass
 
     def get_health_check(self) -> Dict[str, Any]:
         """Generate health check configuration for the database service."""
@@ -2870,7 +3413,7 @@ class MySQLService(BaseDatabase):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MySQL."""
-        volume_name = f"{self.project_name}_mysql_data"
+        volume_name = self.get_volume_name('mysql')
         port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
 
         config = {
@@ -2883,11 +3426,14 @@ class MySQLService(BaseDatabase):
                         f"{volume_name}:/var/lib/mysql",
                         "./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro"
                     ],
-                    'healthcheck': self.get_health_check()
+                    'healthcheck': self.get_health_check(),
+                    'networks': ['app_network']
                 }
             },
             'volumes': {
-                volume_name: None
+                volume_name: {
+                    'driver': 'local'
+                }
             }
         }
 
@@ -2912,8 +3458,8 @@ class MySQLService(BaseDatabase):
     def get_environment_variables(self) -> Dict[str, str]:
         """Return required environment variables for MySQL."""
         return {
-            'MYSQL_DATABASE': '${DB_NAME}',
-            'MYSQL_USER': '${DB_USER}',
+            'MYSQL_DATABASE': '${DB_DATABASE}',
+            'MYSQL_USER': '${DB_USERNAME}',
             'MYSQL_PASSWORD': '${DB_PASSWORD}',
             'MYSQL_ROOT_PASSWORD': '${DB_ROOT_PASSWORD}'
         }
@@ -2934,8 +3480,7 @@ class MySQLService(BaseDatabase):
             config_path = self.base_path / 'docker' / 'mysql'
             config_path.mkdir(parents=True, exist_ok=True)
 
-            mysql_config = """
-[mysqld]
+            mysql_config = """[mysqld]
 # Character Set Configuration
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
@@ -3552,7 +4097,7 @@ class BaseWebServer(ABC):
 
     def _get_php_location(self) -> str:
         """Generate PHP location configuration."""
-        return """
+        return r"""
     location ~ \.php$ {
         fastcgi_pass php:9000;
         fastcgi_index index.php;
@@ -3587,13 +4132,14 @@ class NginxService(BaseWebServer):
         super().__init__(project_name, base_path)
         self.config.update({
             'image': 'nginx:stable-alpine',
-            'restart': 'unless-stopped'
+            'restart': 'unless-stopped',
+            'user': '${NGINX_USER:-nginx}'  # Allow user override but default to nginx
         })
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for Nginx."""
-        http_port = self._get_available_port(8000, 8100)  # Try ports between 8000 and 8100
-        https_port = self._get_available_port(8443, 8543)  # Try ports between 8443 and 8543
+        http_port = self._get_available_port(8000, 8100)
+        https_port = self._get_available_port(8443, 8543) if self.ssl_enabled else None
 
         config = {
             'services': {
@@ -3601,62 +4147,48 @@ class NginxService(BaseWebServer):
                     **self.config,
                     'ports': [
                         f"{http_port}:80",
-                        f"{https_port}:443" if self.ssl_enabled else None
+                        f"{https_port}:443" if https_port else None
                     ],
                     'volumes': [
                         '.:/var/www/html:cached',
                         './docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
-                        './docker/nginx/conf.d:/etc/nginx/conf.d:ro'
+                        './docker/nginx/conf.d:/etc/nginx/conf.d:ro',
+                        'nginx_logs:/var/log/nginx'  # Add persistent log volume
                     ],
                     'depends_on': ['php'] if self._uses_php() else [],
-                    'healthcheck': self.get_health_check()
+                    'healthcheck': self.get_health_check(),
+                    'networks': ['app_network']
+                }
+            },
+            'volumes': {
+                'nginx_logs': {
+                    'driver': 'local'
                 }
             }
         }
 
         # Remove None values from ports list
-        config['services']['nginx']['ports'] = [p for p in config['services']['nginx']['ports'] if p is not None]
+        config['services']['nginx']['ports'] = [p for p in config['services']['nginx']['ports'] if p]
 
         return config
-
-    def _get_available_port(self, start_port: int, end_port: int) -> int:
-        """Find an available port in the specified range."""
-        import socket
-        for port in range(start_port, end_port + 1):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                try:
-                    s.bind(('', port))
-                    return port
-                except OSError:
-                    continue
-        return start_port  # Fallback to default if no ports are available
-
-    def get_default_port(self) -> int:
-        """Return the default port for Nginx."""
-        return 8000
-
-    def get_health_check(self) -> Dict[str, Any]:
-        """Generate health check configuration for Nginx."""
-        return {
-            'test': ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/ping'],
-            'interval': '10s',
-            'timeout': '5s',
-            'retries': 3
-        }
 
     def generate_server_config(self) -> bool:
         """Generate Nginx configuration files."""
         try:
             config_path = self.base_path / 'docker' / 'nginx'
-            config_path.mkdir(parents=True, exist_ok=True)
-
-            # Create configuration directories
             conf_d_path = config_path / 'conf.d'
-            conf_d_path.mkdir(exist_ok=True)
 
-            # Generate main configuration files
+            # Create necessary directories
+            self.create_directory(config_path)
+            self.create_directory(conf_d_path)
+
+            # Generate configuration files
             self._create_main_config(config_path)
             self._create_app_config(conf_d_path)
+
+            # Create logs directory with proper permissions
+            logs_path = config_path / 'logs'
+            self.create_directory(logs_path)
 
             return True
         except Exception as e:
@@ -3666,8 +4198,12 @@ class NginxService(BaseWebServer):
     def _create_main_config(self, config_path: Path) -> None:
         """Create main Nginx configuration."""
         main_config = """
+user nginx;
 worker_processes auto;
 worker_rlimit_nofile 65535;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
 
 events {
     multi_accept on;
@@ -3680,6 +4216,7 @@ http {
     tcp_nopush on;
     tcp_nodelay on;
     server_tokens off;
+    log_not_found off;
     types_hash_max_size 2048;
     client_max_body_size 16M;
 
@@ -3688,8 +4225,21 @@ http {
     default_type application/octet-stream;
 
     # Logging
-    access_log /var/log/nginx/access.log combined buffer=512k flush=1m;
-    error_log /var/log/nginx/error.log warn;
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                     '$status $body_bytes_sent "$http_referer" '
+                     '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+    error_log   /var/log/nginx/error.log warn;
+
+    # Limits
+    limit_req_log_level warn;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=10r/s;
+
+    # SSL
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
 
     # Gzip
     gzip on;
@@ -3706,7 +4256,11 @@ http {
 
     def _create_app_config(self, config_path: Path) -> None:
         """Create application-specific server configuration."""
-        app_config = """
+        app_config = r"""
+map $uri $blogname {
+    ~^(?P<blogpath>/[^/]+/)files/(.*)       $blogpath ;
+}
+
 server {
     listen 80;
     server_name localhost;
@@ -3714,10 +4268,11 @@ server {
     index index.php index.html;
 
     # Security headers
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Content-Type-Options "nosniff";
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 
     # Health check endpoint
     location /ping {
@@ -3725,43 +4280,63 @@ server {
         return 200 'healthy\n';
     }
 
+    # PHP handling
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
     location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
         fastcgi_pass php:9000;
         fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
 
-        fastcgi_intercept_errors on;
+        fastcgi_buffering on;
         fastcgi_buffer_size 16k;
-        fastcgi_buffers 4 16k;
+        fastcgi_buffers 16 16k;
+
         fastcgi_connect_timeout 300;
         fastcgi_send_timeout 300;
         fastcgi_read_timeout 300;
     }
 
-    location ~ /\.(?!well-known) {
+    # Deny access to hidden files
+    location ~ /\. {
         deny all;
         access_log off;
         log_not_found off;
     }
 
-    # Optimization for static files
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
-        expires 30d;
-        access_log off;
-        add_header Cache-Control "public";
+    # Static file handling
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires max;
+        log_not_found off;
+    }
+
+    # Enable directory listing for development
+    location ~ ^/(src|public)/ {
+        autoindex on;
     }
 }
 """
         (config_path / 'default.conf').write_text(app_config.strip())
 
-    def _uses_php(self) -> bool:
-        """Determine if the project uses PHP."""
-        return True  # For now, always return True for PHP projects
+    def get_health_check(self) -> Dict[str, Any]:
+        """Generate health check configuration for Nginx."""
+        return {
+            'test': ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/ping'],
+            'interval': '10s',
+            'timeout': '5s',
+            'retries': 3,
+            'start_period': '10s'
+        }
+
+    def get_default_port(self) -> int:
+        """Return the default port for Nginx."""
+        return 8000
 ```
 
 # chimera_stack/templates/**init**.py

@@ -23,7 +23,7 @@ class MySQLService(BaseDatabase):
 
     def get_docker_config(self) -> Dict[str, Any]:
         """Generate Docker service configuration for MySQL."""
-        volume_name = f"{self.project_name}_mysql_data"
+        volume_name = self.get_volume_name('mysql')
         port = self._get_available_port(3306, 3400)  # Try ports between 3306 and 3400
 
         config = {
@@ -36,11 +36,14 @@ class MySQLService(BaseDatabase):
                         f"{volume_name}:/var/lib/mysql",
                         "./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro"
                     ],
-                    'healthcheck': self.get_health_check()
+                    'healthcheck': self.get_health_check(),
+                    'networks': ['app_network']
                 }
             },
             'volumes': {
-                volume_name: None
+                volume_name: {
+                    'driver': 'local'
+                }
             }
         }
 
@@ -65,8 +68,8 @@ class MySQLService(BaseDatabase):
     def get_environment_variables(self) -> Dict[str, str]:
         """Return required environment variables for MySQL."""
         return {
-            'MYSQL_DATABASE': '${DB_NAME}',
-            'MYSQL_USER': '${DB_USER}',
+            'MYSQL_DATABASE': '${DB_DATABASE}',
+            'MYSQL_USER': '${DB_USERNAME}',
             'MYSQL_PASSWORD': '${DB_PASSWORD}',
             'MYSQL_ROOT_PASSWORD': '${DB_ROOT_PASSWORD}'
         }
@@ -87,8 +90,7 @@ class MySQLService(BaseDatabase):
             config_path = self.base_path / 'docker' / 'mysql'
             config_path.mkdir(parents=True, exist_ok=True)
 
-            mysql_config = """
-[mysqld]
+            mysql_config = """[mysqld]
 # Character Set Configuration
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci

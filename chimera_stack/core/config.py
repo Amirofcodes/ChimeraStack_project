@@ -55,8 +55,8 @@ class ConfigurationManager:
             'DB_CONNECTION': 'mysql',
             'DB_HOST': 'mysql',
             'DB_PORT': '3306',
-            'DB_DATABASE': 'devstack',
-            'DB_USERNAME': 'devstack',
+            'DB_DATABASE': self.project_name,
+            'DB_USERNAME': self.project_name,
             'DB_PASSWORD': 'secret',
             'DB_ROOT_PASSWORD': 'rootsecret'
         }
@@ -74,7 +74,7 @@ class ConfigurationManager:
             # Create configuration directory
             self.config_path.mkdir(exist_ok=True, parents=True)
 
-            # Update base configuration
+            # Basic project metadata
             self.config.update({
                 'language': language,
                 'framework': framework,
@@ -86,17 +86,85 @@ class ConfigurationManager:
             # Initialize service configurations
             self._initialize_services(language, framework, webserver, database)
 
+            # Normalize configurations
+            self._normalize_volume_config()
+            self._normalize_network_config()
+            self._normalize_env_vars()
+
             # Save configurations
             self._save_docker_compose()
             self._save_environment_file()
-            self.save_config(environment)
+            self._save_env_config(environment)
 
             return True
         except Exception as e:
             print(f"Error initializing config: {e}")
             return False
 
-    def _initialize_services(self, language: str, framework: str, 
+    def _normalize_volume_config(self) -> None:
+        """Normalize volume configurations to prevent duplicates and ensure consistency."""
+        if 'volumes' not in self.config:
+            self.config['volumes'] = {}
+
+        # Collect all volume definitions
+        normalized_volumes = {}
+        for service in self.config.get('services', {}).values():
+            if isinstance(service, dict) and 'volumes' in service:
+                # Extract volume names from volume mappings
+                for volume_mapping in service.get('volumes', []):
+                    if ':' in volume_mapping:
+                        volume_name = volume_mapping.split(':')[0]
+                        # Skip bind mounts (paths starting with . or /)
+                        if not volume_name.startswith(('.', '/')):
+                            normalized_volumes[volume_name] = {
+                                'driver': 'local',
+                                'name': f"{self.project_name}_{volume_name}"
+                            }
+
+        # Update the main volumes configuration
+        self.config['volumes'] = normalized_volumes
+
+    def _normalize_network_config(self) -> None:
+        """Normalize network configurations."""
+        if 'networks' not in self.config:
+            self.config['networks'] = {}
+
+        # Ensure app network exists and is configured consistently
+        self.config['networks']['app_network'] = {
+            'driver': 'bridge',
+            'name': f"{self.project_name}_network"
+        }
+
+    def _normalize_env_vars(self) -> None:
+        """Organize and normalize environment variables."""
+        # Group environment variables by service
+        self.environment_vars = {
+            # PHP Configuration
+            'PHP_DISPLAY_ERRORS': '1',
+            'PHP_ERROR_REPORTING': 'E_ALL',
+            'PHP_MEMORY_LIMIT': '256M',
+            'PHP_MAX_EXECUTION_TIME': '30',
+            'PHP_POST_MAX_SIZE': '100M',
+            'PHP_UPLOAD_MAX_FILESIZE': '100M',
+            'PHP_LOG_LEVEL': 'debug',
+            'PHP_LOG_ERRORS': '1',
+            'PHP_ERROR_LOG': '/var/log/php-fpm/php_errors.log',
+
+            # Database Configuration
+            'DB_CONNECTION': self.config.get('database', 'mysql'),
+            'DB_HOST': f"{self.config.get('database', 'mysql')}",
+            'DB_PORT': '3306' if self.config.get('database') in ['mysql', 'mariadb'] else '5432',
+            'DB_DATABASE': self.project_name,
+            'DB_USERNAME': self.project_name,
+            'DB_PASSWORD': 'secret',
+            'DB_ROOT_PASSWORD': 'rootsecret',
+
+            # Service Configuration
+            'COMPOSE_PROJECT_NAME': self.project_name,
+            'PROJECT_ROOT': str(self.base_path)
+        }
+
+    def _initialize_services(self, language: str, framework: str,
                            webserver: str, database: str) -> None:
         """Initialize service configurations based on selected options."""
         # Initialize database service
@@ -200,14 +268,18 @@ class ConfigurationManager:
 
     def _save_docker_compose(self) -> None:
         """Save Docker Compose configuration file."""
-        # Clean up configuration for docker-compose format
+        # Create a clean configuration for docker-compose
         compose_config = {
-            'version': self.config['version'],
             'services': self.config['services'],
             'networks': self.config['networks'],
             'volumes': self.config['volumes']
         }
-        
+
+        # Remove any empty configurations
+        for key in list(compose_config.keys()):
+            if not compose_config[key]:
+                del compose_config[key]
+
         docker_compose_path = self.base_path / 'docker-compose.yml'
         with open(docker_compose_path, 'w') as f:
             yaml.dump(compose_config, f, sort_keys=False)
@@ -257,3 +329,33 @@ class ConfigurationManager:
         except Exception as e:
             print(f"Error saving configuration: {e}")
             return False
+    
+    def _save_env_config(self, environment: str) -> None:
+        """Save environment-specific configuration."""
+        env_config = {
+            'project': {
+                'name': self.project_name,
+                'language': self.config.get('language'),
+                'framework': self.config.get('framework'),
+                'environment': environment
+            },
+            'services': {
+                name: self._clean_service_config(config)
+                for name, config in self.config.get('services', {}).items()
+            },
+            'volumes': self.config.get('volumes', {}),
+            'networks': self.config.get('networks', {})
+        }
+
+        config_file = self.config_path / f'{environment}.yaml'
+        with open(config_file, 'w') as f:
+            yaml.safe_dump(env_config, f, sort_keys=False)
+
+    def _clean_service_config(self, config: Dict) -> Dict:
+        """Clean service configuration for environment file."""
+        # Remove build context and other docker-compose specific fields
+        cleaned = config.copy()
+        keys_to_remove = ['build', 'user', 'restart']
+        for key in keys_to_remove:
+            cleaned.pop(key, None)
+        return cleaned

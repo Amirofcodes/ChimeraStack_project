@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 
 class SetupWizard:
     """Interactive setup wizard for development environment configuration."""
-    
+
     def __init__(self):
         self.config = {}
         self.options = {
@@ -39,7 +39,7 @@ class SetupWizard:
                 'postgresql': 'PostgreSQL - The world\'s most advanced open source database',
                 'mariadb': 'MariaDB - Community-developed fork of MySQL'
             },
-            'environment': {
+            'env': {
                 'development': 'Development - Optimized for local development',
                 'testing': 'Testing - Configured for testing and staging',
                 'production': 'Production - Optimized for production deployment'
@@ -48,7 +48,7 @@ class SetupWizard:
 
     def run_setup(self) -> Optional[Dict[str, str]]:
         """Run the interactive setup process.
-        
+
         Returns:
             Dict containing all configuration options or None if setup was cancelled
         """
@@ -57,56 +57,56 @@ class SetupWizard:
             project_name = self._get_project_name()
             if not self._confirm_step("project name", project_name):
                 return None
-            
+
             # Get environment type
-            environment = self._get_environment()
-            if not self._confirm_step("environment", self.options['environment'][environment]):
+            env = self._get_environment()
+            if not self._confirm_step("environment", self.options['env'][env]):
                 return None
-            
+
             # Get programming language
             language = self._get_language()
             if not self._confirm_step("programming language", self.options['language'][language]):
                 return None
-            
+
             # Get framework
             framework = self._get_framework(language)
             framework_desc = self.options['framework'][language][framework]
             if not self._confirm_step("framework", framework_desc):
                 return None
-            
+
             # Get web server
             webserver = self._get_webserver()
             if not self._confirm_step("web server", self.options['webserver'][webserver]):
                 return None
-            
+
             # Get database
             database = self._get_database()
             if not self._confirm_step("database", self.options['database'][database]):
                 return None
-            
+
             # Show final summary
             self._show_summary({
                 'Project Name': project_name,
-                'Environment': environment,
-                'Language': language,
+                'Environment': self.options['env'][env],
+                'Language': self.options['language'][language],
                 'Framework': framework,
                 'Web Server': webserver,
-                'Database': database
+                'Database': self.options['database'][database]
             })
-            
+
             if not click.confirm('\nWould you like to create this project?'):
                 click.echo("\nSetup cancelled. No changes were made.")
                 return None
-            
+
             return {
                 'project_name': project_name,
-                'environment': environment,
+                'env': env,                # Changed from 'environment' to 'env'
                 'language': language,
                 'framework': framework,
                 'webserver': webserver,
                 'database': database
             }
-            
+
         except click.Abort:
             click.echo("\nSetup cancelled. No changes were made.")
             return None
@@ -122,12 +122,12 @@ class SetupWizard:
     def _get_environment(self) -> str:
         """Get environment type from user."""
         click.echo("\nAvailable environments:")
-        for env, desc in self.options['environment'].items():
+        for env, desc in self.options['env'].items():
             click.echo(f"  {env}: {desc}")
-        
+
         return click.prompt(
             "\nWhich environment would you like to use?",
-            type=click.Choice(self.options['environment'].keys()),
+            type=click.Choice(self.options['env'].keys()),
             default='development'
         )
 
@@ -136,7 +136,7 @@ class SetupWizard:
         click.echo("\nAvailable programming languages:")
         for lang, desc in self.options['language'].items():
             click.echo(f"  {lang}: {desc}")
-        
+
         return click.prompt(
             "\nWhich programming language would you like to use?",
             type=click.Choice(self.options['language'].keys())
@@ -147,7 +147,7 @@ class SetupWizard:
         click.echo(f"\nAvailable frameworks for {language}:")
         for fw, desc in self.options['framework'][language].items():
             click.echo(f"  {fw}: {desc}")
-        
+
         return click.prompt(
             "\nWhich framework would you like to use?",
             type=click.Choice(self.options['framework'][language].keys()),
@@ -159,7 +159,7 @@ class SetupWizard:
         click.echo("\nAvailable web servers:")
         for ws, desc in self.options['webserver'].items():
             click.echo(f"  {ws}: {desc}")
-        
+
         return click.prompt(
             "\nWhich web server would you like to use?",
             type=click.Choice(self.options['webserver'].keys()),
@@ -171,7 +171,7 @@ class SetupWizard:
         click.echo("\nAvailable databases:")
         for db, desc in self.options['database'].items():
             click.echo(f"  {db}: {desc}")
-        
+
         return click.prompt(
             "\nWhich database would you like to use?",
             type=click.Choice(self.options['database'].keys()),
@@ -191,12 +191,5 @@ class SetupWizard:
         click.echo("\nConfiguration Summary:")
         click.echo("=====================")
         for key, value in config.items():
-            # Get description for the value if available
-            if key.lower() in self.options:
-                desc = self.options[key.lower()].get(value, value)
-            elif key == 'Framework':
-                desc = self.options['framework'][config['Language']][value]
-            else:
-                desc = value
-            click.echo(f"{key}: {desc}")
+            click.echo(f"{key}: {value}")
         click.echo("=====================")

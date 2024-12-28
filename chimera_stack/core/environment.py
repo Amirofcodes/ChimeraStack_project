@@ -24,12 +24,6 @@ class Environment:
         self.name = name
         self.path = path or self._get_safe_project_path()
         self.config: Dict = {}
-        self.dirs = {
-            'src': self.path / 'src',
-            'public': self.path / 'public',
-            'config': self.path / 'config',
-            'docker': self.path / 'docker'
-        }
 
     def _get_safe_project_path(self) -> Path:
         """
@@ -81,18 +75,26 @@ class Environment:
 
     def setup(self) -> bool:
         """
-        Initialize the development environment with minimal directory structure.
+        Initialize the development environment.
+        Only creates essential directories, letting services create their own.
 
         Returns:
             bool: True if setup was successful
         """
         try:
             # Create project root
-            self.path.mkdir(exist_ok=True, parents=True)
+            self.create_directory(self.path)
 
-            # Create only essential directories
-            for dir_path in self.dirs.values():
-                self.create_directory(dir_path)
+            # Create essential directories
+            essential_dirs = [
+                self.path / 'src',
+                self.path / 'public',
+                self.path / 'config'
+            ]
+
+            for dir_path in essential_dirs:
+                if not self.create_directory(dir_path):
+                    return False
 
             # Create initial configuration files
             self._create_initial_files()
@@ -100,6 +102,7 @@ class Environment:
             return True
         except Exception as e:
             print(f"Error setting up environment: {e}")
+            self.cleanup()
             return False
 
     def _create_initial_files(self) -> None:
@@ -122,6 +125,9 @@ class Environment:
 
 # Dependencies
 /vendor/
+__pycache__/
+*.py[cod]
+*$py.class
 
 # IDE files
 .idea/
@@ -132,9 +138,12 @@ class Environment:
 .DS_Store
 Thumbs.db
 
-# Docker
-/docker/database
-/docker/webserver
+# Logs
+*.log
+
+# Build artifacts
+/build/
+/dist/
 """
             gitignore.write_text(gitignore_content.strip())
 

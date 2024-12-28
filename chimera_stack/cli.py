@@ -133,7 +133,7 @@ def info():
     click.echo("\nFor more information, visit the repository.")
 
 def create_project(project_name: str, language: str, framework: str,
-                  webserver: str, database: str, env: str):
+                   webserver: str, database: str, env: str):
     """Common project creation logic used by both init and create commands."""
     try:
         project_path = Path.cwd() / project_name
@@ -174,19 +174,25 @@ def create_project(project_name: str, language: str, framework: str,
         if not docker_manager.verify_docker_installation():
             raise click.ClickException("Docker is not available")
 
-        try:
-            docker_manager.create_network()
-            click.echo("Docker network created successfully")
-        except Exception as e:
-            click.echo(f"Warning: {str(e)}")
-            click.echo("Using existing network...")
-
+        # Create Docker volume for persistent data
         try:
             docker_manager.create_volume()
             click.echo("Docker volume created successfully")
         except Exception as e:
             click.echo(f"Warning: {str(e)}")
             click.echo("Using existing volume...")
+
+        # Clean up empty directories
+        empty_dirs = [
+            project_path / 'docker' / 'database',
+            project_path / 'docker' / 'webserver'
+        ]
+        for dir_path in empty_dirs:
+            if dir_path.exists() and not any(dir_path.iterdir()):
+                try:
+                    dir_path.rmdir()
+                except Exception as e:
+                    print(f"Warning: Could not remove empty directory {dir_path}: {e}")
 
         click.echo(f"\n✨ Project {project_name} created successfully!")
         click.echo("\nNext steps:")

@@ -30,11 +30,22 @@ class BaseWebServer(ABC):
         """Generate server-specific configuration files."""
         pass
 
-    def create_directory(self, path: Path) -> bool:
-        """Create a directory if it doesn't exist."""
+    def create_directory(self, path: Path, required: bool = False) -> bool:
+        """
+        Safely create a directory.
+
+        Args:
+            path: Path to create
+            required: If True, directory will be created even if empty
+
+        Returns:
+            bool: True if directory was created successfully
+        """
         try:
-            if not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
+            # Only create directory if it's required or has content
+            if required or any(path.iterdir()) if path.exists() else required:
+                if not path.exists():
+                    path.mkdir(parents=True, exist_ok=True)
             return True
         except Exception as e:
             print(f"Error creating directory {path}: {e}")

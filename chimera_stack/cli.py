@@ -195,14 +195,65 @@ def create_project(project_name: str, language: str, framework: str,
                     print(f"Warning: Could not remove empty directory {dir_path}: {e}")
 
         click.echo(f"\n✨ Project {project_name} created successfully!")
-        click.echo("\nNext steps:")
+        
+        # Generate dynamic project guide based on configuration
+        click.echo("\nProject Structure Overview:")
+        click.echo("------------------------")
+        click.echo("Root Directory:")
+        click.echo("  • .env - Environment variables and sensitive configuration")
+        click.echo("  • docker-compose.yml - Docker services orchestration")
+        
+        click.echo("\nApplication:")
+        click.echo("  • public/ - Web root directory (index.php)")
+        click.echo("  • src/ - Application source code and business logic")
+        
+        if language == 'php':
+            if framework == 'none':
+                click.echo("    ◦ bootstrap.php - Autoloading and initialization")
+                click.echo("    ◦ pages/ - Application pages and endpoints")
+
+        click.echo("\nDocker Configuration:")
+        if webserver == 'nginx':
+            click.echo("  • docker/nginx/ - Nginx web server configuration")
+            click.echo("    ◦ conf.d/default.conf - Server blocks and PHP processing")
+        elif webserver == 'apache':
+            click.echo("  • docker/apache/ - Apache web server configuration")
+            click.echo("    ◦ conf.d/default.conf - VirtualHost and mod_php settings")
+
+        if database == 'mysql':
+            click.echo("  • docker/mysql/ - MySQL database configuration")
+            click.echo("    ◦ my.cnf - Database server optimization settings")
+        elif database == 'postgresql':
+            click.echo("  • docker/postgresql/ - PostgreSQL database configuration")
+            click.echo("    ◦ postgresql.conf - Database server settings")
+        elif database == 'mariadb':
+            click.echo("  • docker/mariadb/ - MariaDB database configuration")
+            click.echo("    ◦ my.cnf - Database server optimization settings")
+
+        if language == 'php':
+            click.echo("  • docker/php/ - PHP runtime configuration")
+            click.echo("    ◦ Dockerfile - PHP extensions and dependencies")
+            click.echo("    ◦ php.ini - PHP runtime settings")
+            click.echo("    ◦ www.conf - PHP-FPM process management")
+
+        click.echo("\nNext Steps:")
         click.echo(f"  1. cd {project_name}")
-        click.echo(f"  2. docker-compose up -d")
+        click.echo("  2. docker-compose up -d")
+        click.echo("\nUseful Commands:")
+        click.echo("  • docker-compose ps - List running services")
+        click.echo("  • docker-compose logs - View service logs")
+        if database == 'mysql':
+            click.echo("  • docker-compose exec mysql mysql -u root -p - Access MySQL CLI")
+        elif database == 'postgresql':
+            click.echo("  • docker-compose exec postgresql psql -U postgres - Access PostgreSQL CLI")
+        elif database == 'mariadb':
+            click.echo("  • docker-compose exec mariadb mysql -u root -p - Access MariaDB CLI")
 
     except Exception as e:
         if 'environment' in locals():
             environment.cleanup()
         raise click.ClickException(str(e))
+
 
 if __name__ == '__main__':
     cli()
